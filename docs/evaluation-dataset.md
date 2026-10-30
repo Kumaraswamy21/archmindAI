@@ -1,0 +1,9 @@
+# Java retrieval evaluation dataset specification
+
+The tracked dataset is `backend/app/modules/evaluation/datasets/java-code-search-v1.json`. It contains `dataset_id`, semantic `version`, `repository_snapshot_id`, and 10–20 `questions`. Each question has a stable `id`, natural-language `question`, and one or more `expected_symbols` using fully qualified Java names. Only demonstration source from `backend/evaluation/sample_repository/` is allowed. No credentials, private code, or private questions belong in the file.
+
+The current release is `java-code-search-v1` version `1.0.0` with 13 labeled questions. The fixture file is `src/main/java/example/CommerceService.java`; it yields 12 ordinary method chunks with the default AST chunker. The pinned snapshot is `sha256:2246a0296b80ea0f471e3cdffe053deb4eba0932d87e8b9e6c1c181dd33aa232`.
+
+The snapshot algorithm creates one entry per persisted chunk: `[file_path, qualified_name, chunk_type, start_byte, end_byte, SHA256(UTF-8 content)]`. It sorts entries lexicographically, JSON encodes them with UTF-8 and compact separators, then prefixes the SHA-256 digest with `sha256:`. Repository UUID and chunk ID are omitted so a new registration of identical source has the same snapshot. An extra file or a changed chunk alters the digest. Index the sample with the default 4,000-character chunk limit; a custom split limit may produce a different snapshot.
+
+Release a changed dataset under a new ID or version and update its snapshot digest and labels together. Review every label manually. Keep the old release available for reproducible comparisons. The evaluation service rejects an unknown ID, duplicate question IDs, empty question sets, labels absent from the pinned chunks, and snapshot mismatches. See [retrieval evaluation](modules/evaluation.md) for metrics and API usage.

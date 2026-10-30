@@ -1,0 +1,1 @@
+"""Approved local repository registration."""

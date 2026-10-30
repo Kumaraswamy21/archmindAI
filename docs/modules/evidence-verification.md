@@ -1,0 +1,13 @@
+# Evidence verification (Phase 6.5)
+
+The agentic workflow now runs evidence aggregation and deterministic verification after a specialist generates an answer and before the API returns it. The verifier is separate from Gemini answer generation. It reuses the Phase 5 RAG citation validator for evidence ID, repository-relative file path, and source line bounds, and checks repository scope before considering any claim.
+
+Specialist prompt releases 1.1.0 require each substantive claim to carry an inline marker such as `[E1]`. The verifier treats each answer line or sentence as a claim. `Observed:` lines are observations; `Proposed:`, `Recommendation:`, and `Consider:` lines are recommendations. A claim is `CITATION_VERIFIED` only when every inline evidence ID corresponds to a valid returned citation and included evidence span. A citation list without a per-claim marker does not establish support. Recommendations are labeled as proposals, never as completed changes.
+
+If every claim passes, the response has `verification_status: CITATION_VERIFIED`. If some fail, one deterministic correction pass removes unsupported claims and their citations, rechecks the remaining answer, and returns `PARTIALLY_VERIFIED` with explicit `unsupported_claims` and limitations. If no claim remains, the answer becomes an explicit insufficient-evidence response with no citations. The graph has no retry edge after that pass; `correction_attempts` is at most one. An unknown-intent clarification has `NOT_APPLICABLE` status.
+
+The response includes `claim_verifications` (claim text, observation/recommendation type, evidence IDs, and status), `unsupported_claims` (claim, type, reason), top-level `agents_executed` and `prompt_versions`, plus workflow metadata. Hidden reasoning, raw evidence payloads, credentials, and absolute paths are not exposed.
+
+The verifier establishes citation integrity and explicit association, not semantic entailment. An evidence span may be cited for a claim it does not actually prove; an LLM judge would also be fallible. A narrow guard rejects obvious instruction text repeated from untrusted evidence, but it is not a complete prompt-injection detector. The released specialist prompts instruct Gemini to use only evidence and separate observations from proposals; human review or stronger semantic evaluation remains necessary for high-stakes decisions. Source content never controls verification rules.
+
+The Phase 5 `rag_answer` and Phase 6.2 `query_classifier` prompt releases are unchanged. Specialist system and user versions 1.1.0 add inline claim markers while preserving their 1.0.0 releases for rollback. No separate LLM verifier or `evidence_verification` prompt is used.

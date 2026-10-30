@@ -1,0 +1,20 @@
+{
+  "dataset_id": "java-code-search-v1",
+  "version": "1.0.0",
+  "repository_snapshot_id": "sha256:2246a0296b80ea0f471e3cdffe053deb4eba0932d87e8b9e6c1c181dd33aa232",
+  "questions": [
+    {"id": "Q01", "question": "Where is payment processing implemented?", "expected_symbols": ["example.CommerceService.processPayment"]},
+    {"id": "Q02", "question": "Which method creates an order?", "expected_symbols": ["example.CommerceService.createOrder"]},
+    {"id": "Q03", "question": "Where is stock reserved?", "expected_symbols": ["example.CommerceService.reserveStock"]},
+    {"id": "Q04", "question": "Which method calculates shipping?", "expected_symbols": ["example.CommerceService.calculateShipping"]},
+    {"id": "Q05", "question": "Where is a discount applied?", "expected_symbols": ["example.CommerceService.applyDiscount"]},
+    {"id": "Q06", "question": "Which method validates a coupon?", "expected_symbols": ["example.CommerceService.validateCoupon"]},
+    {"id": "Q07", "question": "Where is a payment refunded?", "expected_symbols": ["example.CommerceService.refundPayment"]},
+    {"id": "Q08", "question": "Which method cancels an order?", "expected_symbols": ["example.CommerceService.cancelOrder"]},
+    {"id": "Q09", "question": "Where is inventory updated?", "expected_symbols": ["example.CommerceService.updateInventory"]},
+    {"id": "Q10", "question": "Which method sends a receipt?", "expected_symbols": ["example.CommerceService.sendReceipt"]},
+    {"id": "Q11", "question": "Where is a customer looked up?", "expected_symbols": ["example.CommerceService.findCustomer"]},
+    {"id": "Q12", "question": "Which method audits a transaction?", "expected_symbols": ["example.CommerceService.auditTransaction"]},
+    {"id": "Q13", "question": "Which methods handle the payment lifecycle?", "expected_symbols": ["example.CommerceService.processPayment", "example.CommerceService.refundPayment", "example.CommerceService.auditTransaction"]}
+  ]
+}

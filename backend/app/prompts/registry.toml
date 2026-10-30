@@ -1,0 +1,71 @@
+[prompts.rag_answer.active]
+system = "1.0.0"
+user = "1.0.0"
+
+[prompts.rag_answer.system."1.0.0"]
+sha256 = "ac38ed5726cd23947ce3fe7dc614577d10be51b409abea698dc330ae0f34dd2a"
+variables = []
+
+[prompts.rag_answer.user."1.0.0"]
+sha256 = "0eea9e1a38e26e95577bb668c6039305c7e25673be2d39b9c479d4532584ae4f"
+variables = ["repository_id", "question", "evidence_context"]
+
+[prompts.query_classifier.active]
+system = "1.0.0"
+user = "1.0.0"
+
+[prompts.query_classifier.system."1.0.0"]
+sha256 = "5c4e84d917ae3b0dbf71b10f9331f238353307b18a3a0402aaf29ae77f3e9ed3"
+variables = []
+
+[prompts.query_classifier.user."1.0.0"]
+sha256 = "fcd2da3770815834e97c13cd9648d310849a9a3ff2dba220a33e51efebfb6a40"
+variables = ["question"]
+
+[prompts.code_analysis.active]
+system = "1.1.0"
+user = "1.1.0"
+[prompts.code_analysis.system."1.0.0"]
+sha256 = "6f0a09e3f86b38e9a4d5d881f55cbc767d86a14a6f28bda0ec70a0ddf8c88e16"
+variables = []
+[prompts.code_analysis.user."1.0.0"]
+sha256 = "22a758f6a1a3d58ad2907797dbd5cdbd63bf56a3aa7a61c061895f97e6c0b40c"
+variables = ["repository_id", "question", "evidence_context"]
+[prompts.code_analysis.system."1.1.0"]
+sha256 = "601ae074b98e2f0c681468ca0ff4b1314566b49b2eb354d4aa33b130f517eee6"
+variables = []
+[prompts.code_analysis.user."1.1.0"]
+sha256 = "408206b7e07787883f9081b6748812b641bf950dfab563425147c426081a2656"
+variables = ["repository_id", "question", "evidence_context"]
+
+[prompts.dependency_analysis.active]
+system = "1.1.0"
+user = "1.1.0"
+[prompts.dependency_analysis.system."1.0.0"]
+sha256 = "aebe0959bf3d1f2707bd393024793d2fc22f6ba1787cd20b667be0d4c5a0327d"
+variables = []
+[prompts.dependency_analysis.user."1.0.0"]
+sha256 = "a535372963958f56602fa6e6fcccf189a53192d553c2c2615a632c98089f3365"
+variables = ["repository_id", "question", "evidence_context"]
+[prompts.dependency_analysis.system."1.1.0"]
+sha256 = "74ca8d10bc14536fd86c0e8993cb5639c41d2fa0ca3c68282a19a9b0d91378b1"
+variables = []
+[prompts.dependency_analysis.user."1.1.0"]
+sha256 = "12dba27cadce9b394adaeb57e182bfacb2e42cf94a222215955aa8486b4e10c8"
+variables = ["repository_id", "question", "evidence_context"]
+
+[prompts.architecture_analysis.active]
+system = "1.1.0"
+user = "1.1.0"
+[prompts.architecture_analysis.system."1.0.0"]
+sha256 = "5b4cd30313096c0d7639fa91a0cca1e8a7c27480ab7327d61c06a393c93464a4"
+variables = []
+[prompts.architecture_analysis.user."1.0.0"]
+sha256 = "8b806cfe94581a0559c870addea3c4acece146523b5cb954614d7067f1eb2b8d"
+variables = ["repository_id", "question", "evidence_context"]
+[prompts.architecture_analysis.system."1.1.0"]
+sha256 = "75826e0dc5d3d203ca6465508cc9318336f3467707ab769180526f4d13240f66"
+variables = []
+[prompts.architecture_analysis.user."1.1.0"]
+sha256 = "f7b4178af44bacb14219b5118d6f4b177037feeae6b85d40cb08da1536fcc24a"
+variables = ["repository_id", "question", "evidence_context"]

@@ -1,0 +1,14 @@
+[
+  {
+    "query": "Where is payment processing implemented?",
+    "expected_symbol": "processPayment"
+  },
+  {
+    "query": "Where is an order created?",
+    "expected_symbol": "createOrder"
+  },
+  {
+    "query": "Which method reserves stock?",
+    "expected_symbol": "reserveStock"
+  }
+]
