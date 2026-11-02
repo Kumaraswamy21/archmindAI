@@ -43,7 +43,7 @@ Application errors use the shared `{"error":{"code":"...","message":"..."}}` env
 | 422 | `FILE_ENCODING_INVALID` | The file is not valid UTF-8. |
 | 503 | `REPOSITORY_UNAVAILABLE` | The registered repository cannot be read. |
 
-Missing request fields and invalid UUIDs receive FastAPI's standard HTTP 422 `detail` response. OpenAPI documents both 422 shapes.
+Missing request fields and invalid UUIDs receive the shared HTTP 422 `VALIDATION_ERROR` response. OpenAPI documents this shape.
 
 ## Java symbols API
 
@@ -83,7 +83,7 @@ The extractor includes classes, interfaces, their direct methods and constructor
 
 Method and constructor signatures include declaration text through the parameter list and any `throws` clause, with whitespace normalized and declaration-level annotations and bodies excluded. Parameter types retain source spelling, including generics, arrays, and varargs. Annotation strings retain their source arguments, such as `@GetMapping("/orders")`; static imports are prefixed with `static`. Common Spring annotations including `@RestController`, `@Service`, `@Repository`, `@GetMapping`, `@PostMapping`, and `@Transactional` are captured as source metadata. Their presence does not prove runtime behavior. Imports are recorded, not resolved; no external dependency lookup or call graph is built.
 
-Locations use one-based, inclusive lines and include declaration-level annotation lines when present. Malformed Java returns symbols Tree-sitter can recover; the Phase 3.1 parse endpoint remains available when syntax-error presence is needed. The symbols endpoint inherits the reader and parse endpoint's HTTP 400, 403, 404, 413, 422, and 503 errors. Invalid query parameters use FastAPI's standard 422 `detail` envelope.
+Locations use one-based, inclusive lines and include declaration-level annotation lines when present. Malformed Java returns symbols Tree-sitter can recover; the Phase 3.1 parse endpoint remains available when syntax-error presence is needed. The symbols endpoint inherits the reader and parse endpoint's HTTP 400, 403, 404, 413, 422, and 503 errors. Invalid query parameters use the shared 422 `VALIDATION_ERROR` envelope.
 
 ## Java chunk preview API
 
@@ -135,13 +135,13 @@ Each direct method and constructor becomes one complete chunk when it fits the l
 
 Chunk IDs are SHA-256 hashes of the repository UUID, relative file path, chunk kind, qualified name, AST byte boundaries, package, imports, annotations, and exact source content. Repeating a preview against identical registered content yields the same IDs, including for overloaded methods on the same line. A new repository registration gets a new UUID and thus different IDs. Line numbers are one-based and inclusive.
 
-`ARCHMIND_MAX_CHUNK_CHARS` sets the default preview limit to 4,000 Python Unicode characters; it is read at application startup. The optional `max_chunk_chars` request field overrides it for one preview. Both accept 1 through 1,000,000 characters; an invalid request value returns the standard HTTP 422 validation response. Character counts are deterministic for a given decoded UTF-8 source but are only an approximation of a future tokenizer's budget.
+`ARCHMIND_MAX_CHUNK_CHARS` sets the default preview limit to 4,000 Python Unicode characters; it is read at application startup. The optional `max_chunk_chars` request field overrides it for one preview. Both accept 1 through 1,000,000 characters; an invalid request value returns the shared HTTP 422 validation response. Character counts are deterministic for a given decoded UTF-8 source but are only an approximation of a future tokenizer's budget.
 
 An oversized declaration is partitioned at Tree-sitter method, constructor, class body, and statement boundaries where possible. Each part has type `method_part`, `constructor_part`, or `class_part`, plus a shared `parent_chunk_id`, one-based `sequence`, byte offsets, and a header with `Part: N`. The parent ID is the ID the intact declaration would have; it is a reference, not a duplicate parent chunk in the response. A single remaining AST node or intervening source span that exceeds the limit is cut at Unicode character boundaries and marked `split_strategy: "fallback"`; parts formed from AST boundaries are marked `"ast"`. All parts preserve exact source text, and concatenating them in sequence reconstructs the full declaration. Byte offsets refer to the UTF-8 file and allow exact verification even for multibyte characters. No source is silently truncated.
 
 `excluded_spans` lists every byte range outside emitted chunks, including package/import text, class wrappers, comments, fields in container classes, and unsupported declarations. Each item has byte offsets, one-based line range, and reason `outside_chunked_declarations`. The chunks and excluded spans together cover the entire file without overlap. Excluded spans do not echo source text. This phase does not promise semantic completeness of malformed Java or chunk top-level fields/initializers separately.
 
-The preview inherits the secure reader's file-size limit (`ARCHMIND_DISCOVERY_MAX_FILE_SIZE_BYTES`), path and symlink protections, and UTF-8 validation. An oversized file returns HTTP 413 before parsing. Error codes and HTTP statuses are the same as the parse and symbols endpoints: 400, 403, 404, 413, 422, and 503. Request validation uses FastAPI's standard 422 response. No chunks are persisted.
+The preview inherits the secure reader's file-size limit (`ARCHMIND_DISCOVERY_MAX_FILE_SIZE_BYTES`), path and symlink protections, and UTF-8 validation. An oversized file returns HTTP 413 before parsing. Error codes and HTTP statuses are the same as the parse and symbols endpoints: 400, 403, 404, 413, 422, and 503. Request validation uses the shared 422 `VALIDATION_ERROR` response. No chunks are persisted.
 
 ## Dependencies and verification
 

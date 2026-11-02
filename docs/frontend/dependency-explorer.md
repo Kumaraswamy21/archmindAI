@@ -1,0 +1,11 @@
+# Dependency explorer
+
+The project **Dependencies** route reads `GET /api/v1/repositories/{repository_id}/dependencies` with a limit of 100. It maps the response's exact source and target symbols to React Flow nodes and uses each persisted relationship as one directed edge. Edge labels show `IMPORTS`, `EXTENDS`, `IMPLEMENTS`, `INJECTS`, or `CALLS`. Dashed amber edges are unresolved; solid teal edges are resolved. The graph never creates inferred relationships.
+
+The backend response includes class and interface symbols for type relationships. It can also include method symbols for calls and `file:` symbols for imports. The graph retains those symbol identities. On selection, the details panel lists visible relationships, resolution status, and source location. It can query the existing per-file Java symbol API to show a confirmed `class`, `interface`, or callable kind; otherwise it labels the item a Java symbol. Source links open the read-only explorer with the recorded file path and inclusive line range.
+
+Pointer drag pans the graph; wheel or pinch zooms it. The Controls widget provides keyboard accessible zoom and fit actions. Search suggests symbols in the currently loaded set. Choosing one, or entering an exact qualified symbol, fetches a bounded direct neighborhood using the backend `symbol` filter. Relationship type is filtered on the server; resolution status is filtered over the loaded set. Clear focus returns to the bounded overview.
+
+The API has no dependency pagination or prefix search. A query returns at most 100 edges, and the graph renders at most 70 distinct symbols. The UI shows the backend total and omitted edge count so a large repository is not presented as a complete graph. Focus on a symbol to inspect another neighborhood. Empty and error states are explicit. Every request and response is checked against the selected repository ID.
+
+These edges come from static Java analysis. Unresolved targets can be external, ambiguous, or unavailable to the extractor. Reflection, runtime dispatch, configuration wiring, and dynamically constructed calls are outside this graph. A static edge is evidence of a source-level relationship, not a runtime execution trace.

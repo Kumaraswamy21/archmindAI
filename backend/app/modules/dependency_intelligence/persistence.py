@@ -6,7 +6,8 @@ from sqlalchemy import delete, func, or_, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.db.models import DependencyRelationshipRow, RepositoryRow
+from app.db.models import DependencyRelationshipRow, IndexJobRow, RepositoryRow
+from app.errors import ApplicationError
 from app.modules.dependency_intelligence.schemas import (
     DependencyRelationship, Direction, RelationshipType,
 )
@@ -22,6 +23,15 @@ class DependencyPersistence:
     ) -> int:
         ids = {item.relationship_id for item in relationships}
         with self._session_factory.begin() as session:
+            project = session.get(RepositoryRow, repository.repository_id, with_for_update=True)
+            if isinstance(project, RepositoryRow):
+                active_job = session.scalar(select(IndexJobRow.job_id).where(
+                    IndexJobRow.repository_id == repository.repository_id,
+                    IndexJobRow.status.in_(["QUEUED", "RUNNING"]),
+                ).limit(1))
+                if project.active_snapshot_id is not None or active_job is not None:
+                    raise ApplicationError(409, "MANAGED_INDEX_REQUIRED",
+                                           "Use the managed repository indexing job.")
             session.execute(
                 insert(RepositoryRow).values(
                     id=repository.repository_id, name=repository.name,

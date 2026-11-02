@@ -1,5 +1,7 @@
 """Secure source-file discovery through registered repositories."""
 
+from contract_helpers import legacy_error
+
 import json
 from pathlib import Path
 from uuid import uuid4
@@ -126,7 +128,7 @@ def test_file_size_limit_rejects_the_scan(
     response = client.get(f"/api/v1/repositories/{repository_id}/files")
 
     assert response.status_code == 413
-    assert response.json() == {
+    assert legacy_error(response) == {
         "error": {
             "code": "DISCOVERY_LIMIT_EXCEEDED",
             "message": "Repository discovery limit exceeded.",
@@ -172,7 +174,7 @@ def test_unknown_repository_returns_404(
     response = client.get(f"/api/v1/repositories/{uuid4()}/files")
 
     assert response.status_code == 404
-    assert response.json() == {
+    assert legacy_error(response) == {
         "error": {"code": "REPOSITORY_NOT_FOUND", "message": "Repository not found."}
     }
 
@@ -186,7 +188,7 @@ def test_unavailable_registered_repository_returns_503(
     response = client.get(f"/api/v1/repositories/{repository_id}/files")
 
     assert response.status_code == 503
-    assert response.json() == {
+    assert legacy_error(response) == {
         "error": {
             "code": "REPOSITORY_UNAVAILABLE",
             "message": "Registered repository is unavailable.",

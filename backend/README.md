@@ -16,6 +16,8 @@ python -m pip install -e '.[test]'
 
 No environment variables are required. See `.env.example`.
 To register local repositories, configure approved roots and aliases before startup as described in the [repository ingestion guide](../docs/modules/repository-ingestion.md). No aliases are enabled by default.
+For a browser frontend, configure `ARCHMIND_FRONTEND_ORIGINS` as a JSON list of exact origins. Project registration and metadata persist in managed PostgreSQL when `DATABASE_URL` is configured. See the [frontend API contract](../docs/api/frontend-contract.md).
+For managed full-repository Java indexing, apply Alembic revision `20261031_0006`, start `.venv/bin/python -m app.modules.project_indexing.worker` in a separate process with the same environment, and call `POST /api/v1/repositories/{repository_id}/index`. Poll its job endpoint. See [project onboarding](../docs/modules/project-onboarding.md).
 
 ## Start the server
 
@@ -27,7 +29,7 @@ The OpenAPI schema is available at <http://127.0.0.1:8000/openapi.json> and Swag
 The health check is available at `GET /api/v1/health` and returns `{"status":"healthy","service":"archmind"}`.
 `POST /api/v1/questions/validate` accepts a JSON object with a `question` string. It trims surrounding whitespace and returns `{"valid":true,"normalized_question":"..."}`. Empty, missing, or overlong questions receive HTTP 422.
 `GET /api/v1/questions/examples/order-service` returns an example question. `service-dependencies` is another available ID. An unknown ID returns HTTP 404 with an `error` object containing a `code` and `message`.
-`POST /api/v1/repositories` registers a configured local repository alias in memory and returns HTTP 201. Repository paths are never returned.
+`POST /api/v1/repositories` registers a configured alias and returns HTTP 201. With a configured managed database, project metadata and UUIDs persist across restarts. Repository paths are never returned.
 `GET /api/v1/repositories/{repository_id}/files` lists supported source files in that registered repository. See the [repository ingestion guide](../docs/modules/repository-ingestion.md) for filtering, limits, and errors.
 `GET /api/v1/repositories/{repository_id}/files/content?path=relative/source.py` reads one supported UTF-8 source file without modifying it. The same per-file size limit applies; see the [security and error contract](../docs/modules/repository-ingestion.md#source-content-api).
 `POST /api/v1/repositories/{repository_id}/scan` synchronously summarizes the currently discoverable source files by count, bytes, and language. See the [complete ingestion workflow](../README.md#ingestion-workflow).

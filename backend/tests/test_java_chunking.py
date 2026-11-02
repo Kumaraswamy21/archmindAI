@@ -170,7 +170,7 @@ def test_reader_errors_and_validation(repository) -> None:
     assert preview(client, str(uuid4()), "script.py").status_code == 404
     invalid = client.post(f"/api/v1/repositories/{repository_id}/chunks/preview", json={})
     assert invalid.status_code == 422
-    assert "detail" in invalid.json()
+    assert "details" in invalid.json()["error"]
 
 
 def test_configured_file_size_limit_applies_to_preview(
@@ -320,7 +320,7 @@ def test_invalid_chunk_size_is_422(repository, limit) -> None:
     client, _, repository_id = repository
     response = preview(client, repository_id, "Any.java", limit)
     assert response.status_code == 422
-    assert "detail" in response.json()
+    assert "details" in response.json()["error"]
 
 
 def test_environment_default_chunk_size(repository, monkeypatch: pytest.MonkeyPatch) -> None:

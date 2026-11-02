@@ -22,8 +22,26 @@ from app.main import create_app
 from app.modules.code_intelligence.chunking.schemas import JavaChunk
 from app.modules.code_intelligence.persistence import ChunkPersistence
 from app.modules.repository_ingestion.registry import RepositoryRecord
+from app.modules.repository_ingestion.persistence import ProjectRecord
 
 DUMMY_URL = "postgresql+psycopg://placeholder:placeholder@db.example.invalid/archmind_test"
+
+
+class FakeProjectStore:
+    def __init__(self):
+        self.records = {}
+
+    def create(self, name, source_alias):
+        record = ProjectRecord(uuid4(), name, source_alias, "REGISTERED", datetime.now(timezone.utc))
+        self.records[record.repository_id] = record
+        return record
+
+    def get(self, repository_id):
+        return self.records.get(repository_id)
+
+    def list(self, limit, offset):
+        records = list(self.records.values())
+        return len(records), records[offset:offset + limit]
 
 
 def _configured_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
@@ -33,7 +51,9 @@ def _configured_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("ARCHMIND_APPROVED_REPOSITORY_ROOTS", json.dumps([str(approved)]))
     monkeypatch.setenv("ARCHMIND_REPOSITORY_ALIASES", json.dumps({"sample": str(root)}))
     monkeypatch.setenv("DATABASE_URL", DUMMY_URL)
-    client = TestClient(create_app())
+    app = create_app()
+    app.state.repository_service.attach_store(FakeProjectStore())
+    client = TestClient(app)
     response = client.post(
         "/api/v1/repositories", json={"name": "sample-repo", "source_alias": "sample"}
     )
@@ -110,7 +130,7 @@ def test_schema_has_foreign_key_and_indexes() -> None:
 def test_initial_migration_is_present() -> None:
     config = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
     script = ScriptDirectory.from_config(config)
-    assert script.get_current_head() == "20261031_0005"
+    assert script.get_current_head() == "20261031_0006"
     assert script.get_revision("20261030_0001").down_revision is None
 
 

@@ -1,5 +1,7 @@
 """Java AST parsing through registered, securely read repository files."""
 
+from contract_helpers import legacy_error
+
 import json
 from pathlib import Path
 from uuid import uuid4
@@ -182,7 +184,7 @@ def test_invalid_file_path_returns_403(
     response = parse_file(client, repository_id, path)
 
     assert response.status_code == 403
-    assert response.json() == {
+    assert legacy_error(response) == {
         "error": {
             "code": "INVALID_SOURCE_PATH",
             "message": "Source file path is not permitted.",
@@ -210,7 +212,7 @@ def test_parse_openapi_schema_and_documented_errors(
         assert operation["responses"][status]["content"]["application/json"]["schema"] == {
             "$ref": "#/components/schemas/ErrorResponse"
         }
-    assert {"$ref": "#/components/schemas/ErrorResponse"} in operation["responses"]["422"]["content"]["application/json"]["schema"]["anyOf"]
+    assert operation["responses"]["422"]["content"]["application/json"]["schema"] == {"$ref": "#/components/schemas/ErrorResponse"}
     response_schema = schema["components"]["schemas"]["JavaParseResponse"]
     assert set(response_schema["required"]) == {
         "file_path", "language", "has_syntax_errors", "classes"

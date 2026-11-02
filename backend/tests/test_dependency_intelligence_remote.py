@@ -50,7 +50,7 @@ def test_remote_edges_idempotency_scope_fk_and_restart():
     first, second = edge(first_id, "First"), edge(second_id, "Second")
     try:
         with factory() as session:
-            assert session.scalar(text("SELECT version_num FROM alembic_version")) == "20261031_0005"
+            assert session.scalar(text("SELECT version_num FROM alembic_version")) == "20261031_0006"
         store = DependencyPersistence(factory)
         assert store.replace_snapshot(record(first_id), [first]) == 1
         assert store.replace_snapshot(record(first_id), [first]) == 1

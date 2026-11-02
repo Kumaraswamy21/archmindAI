@@ -1,5 +1,7 @@
 """Repository registration API and configuration checks."""
 
+from contract_helpers import legacy_error
+
 import json
 from datetime import timezone
 from pathlib import Path
@@ -40,7 +42,7 @@ def test_register_approved_repository(repository_client: TestClient) -> None:
     assert UUID(response.json()["repository_id"])
     assert response.json()["name"] == "ecommerce-service"
     assert response.json()["status"] == "REGISTERED"
-    assert set(response.json()) == {"repository_id", "name", "status"}
+    assert set(response.json()) == {"repository_id", "name", "source_alias", "status", "registered_at"}
 
 
 @pytest.mark.parametrize(
@@ -62,7 +64,7 @@ def test_invalid_registration_request_returns_422(
     response = repository_client.post("/api/v1/repositories", json=payload)
 
     assert response.status_code == 422
-    assert isinstance(response.json()["detail"], list)
+    assert isinstance(response.json()["error"]["details"], list)
 
 
 def test_unknown_alias_returns_404(repository_client: TestClient) -> None:
@@ -72,7 +74,7 @@ def test_unknown_alias_returns_404(repository_client: TestClient) -> None:
     )
 
     assert response.status_code == 404
-    assert response.json() == {
+    assert legacy_error(response) == {
         "error": {
             "code": "REPOSITORY_ALIAS_NOT_FOUND",
             "message": "Repository source alias not found.",
@@ -95,7 +97,7 @@ def test_duplicate_alias_or_name_returns_409(repository_client: TestClient) -> N
     assert first.status_code == 201
     for response in (duplicate_alias, duplicate_name):
         assert response.status_code == 409
-        assert response.json() == {
+        assert legacy_error(response) == {
             "error": {
                 "code": "REPOSITORY_ALREADY_REGISTERED",
                 "message": "Repository already registered.",
@@ -134,7 +136,7 @@ def test_invalid_configured_source_returns_503(
     )
 
     assert response.status_code == 503
-    assert response.json() == {
+    assert legacy_error(response) == {
         "error": {
             "code": "REPOSITORY_SOURCE_UNAVAILABLE",
             "message": "Configured repository source is unavailable.",
@@ -195,4 +197,4 @@ def test_repository_openapi_and_phase_one_routes(repository_client: TestClient) 
     assert set(request_schema["properties"]) == {"name", "source_alias"}
     assert request_schema["additionalProperties"] is False
     response_schema = schema["components"]["schemas"]["RepositoryRegistrationResponse"]
-    assert set(response_schema["properties"]) == {"repository_id", "name", "status"}
+    assert set(response_schema["properties"]) == {"repository_id", "name", "source_alias", "status", "registered_at"}

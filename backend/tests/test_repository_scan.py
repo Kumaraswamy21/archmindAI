@@ -1,5 +1,7 @@
 """Synchronous repository scan summaries and Phase 2 workflow."""
 
+from contract_helpers import legacy_error
+
 import json
 from pathlib import Path
 from uuid import uuid4
@@ -135,7 +137,7 @@ def test_unknown_repository_returns_404(
     response = scan(client, str(uuid4()))
 
     assert response.status_code == 404
-    assert response.json() == {
+    assert legacy_error(response) == {
         "error": {"code": "REPOSITORY_NOT_FOUND", "message": "Repository not found."}
     }
 

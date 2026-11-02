@@ -1,6 +1,7 @@
 """Typed, invocation-local LangGraph state. No checkpointer is configured."""
 
-from typing import TypedDict
+from typing import Callable, TypedDict
+from threading import Event
 from uuid import UUID
 
 from app.modules.rag.schemas import Citation
@@ -30,3 +31,5 @@ class WorkflowState(TypedDict):
     citations: list[Citation]
     errors: list[str]
     workflow_metadata: dict[str, object]
+    progress_sink: Callable[[str, dict[str, object]], None] | None
+    cancel_event: Event | None

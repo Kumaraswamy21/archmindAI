@@ -1,0 +1,5703 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "ArchMind AI API",
+    "description": "Read-only repository intelligence and architecture analysis platform",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/v1/health": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Check service health",
+        "description": "Return the current health status of the ArchMind API.",
+        "operationId": "get_health_api_v1_health_get",
+        "responses": {
+          "200": {
+            "description": "The service is healthy.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/questions/validate": {
+      "post": {
+        "tags": [
+          "questions"
+        ],
+        "summary": "Validate a question",
+        "description": "Trim surrounding whitespace and validate the question length.",
+        "operationId": "validate_question_api_v1_questions_validate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuestionValidationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuestionValidationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/questions/examples/{example_id}": {
+      "get": {
+        "tags": [
+          "questions"
+        ],
+        "summary": "Get an example question",
+        "description": "Return one of the available engineering question examples.",
+        "operationId": "get_question_example_api_v1_questions_examples__example_id__get",
+        "parameters": [
+          {
+            "name": "example_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Example Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuestionExampleResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Question example not found.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "EXAMPLE_NOT_FOUND",
+                    "message": "Question example not found.",
+                    "request_id": "00000000-0000-4000-8000-000000000000",
+                    "details": null
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/repositories": {
+      "get": {
+        "tags": [
+          "repositories"
+        ],
+        "summary": "List registered projects with pagination",
+        "operationId": "list_repositories_api_v1_repositories_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepositoryListResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          },
+          "422": {
+            "description": "Request validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "repositories"
+        ],
+        "summary": "Register an approved local repository",
+        "description": "Register a repository through an administrator-configured source alias.",
+        "operationId": "register_repository_api_v1_repositories_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RepositoryRegistrationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepositoryRegistrationResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Source alias not found.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "REPOSITORY_ALIAS_NOT_FOUND",
+                    "message": "Repository source alias not found.",
+                    "request_id": "00000000-0000-4000-8000-000000000000",
+                    "details": null
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Repository already registered.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "REPOSITORY_ALREADY_REGISTERED",
+                    "message": "Repository already registered.",
+                    "request_id": "00000000-0000-4000-8000-000000000000",
+                    "details": null
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Configured source unavailable.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "REPOSITORY_SOURCE_UNAVAILABLE",
+                    "message": "Configured repository source is unavailable.",
+                    "request_id": "00000000-0000-4000-8000-000000000000",
+                    "details": null
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/repositories/approved-aliases": {
+      "get": {
+        "tags": [
+          "repositories"
+        ],
+        "summary": "List server-approved repository aliases",
+        "operationId": "approved_aliases_api_v1_repositories_approved_aliases_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApprovedAliasesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/repositories/{repository_id}": {
+      "get": {
+        "tags": [
+          "repositories"
+        ],
+        "summary": "Get persisted project metadata",
+        "operationId": "get_repository_api_v1_repositories__repository_id__get",
+        "parameters": [
+          {
+            "name": "repository_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Repository Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepositoryRegistrationResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          },
+          "422": {
+            "description": "Request validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/repositories/{repository_id}/files": {
+      "get": {
+        "tags": [
+          "repositories"
+        ],
+        "summary": "Discover repository source files",
+        "description": "List supported source files within a registered repository.",
+        "operationId": "list_repository_files_api_v1_repositories__repository_id__files_get",
+        "parameters": [
+          {
+            "name": "repository_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Repository Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepositoryFilesResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Repository not found.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "REPOSITORY_NOT_FOUND",
+                    "message": "Repository not found.",
+                    "request_id": "00000000-0000-4000-8000-000000000000",
+                    "details": null
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Discovery limit exceeded.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "DISCOVERY_LIMIT_EXCEEDED",
+                    "message": "Repository discovery limit exceeded.",
+                    "request_id": "00000000-0000-4000-8000-000000000000",
+                    "details": null
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Repository unavailable.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "REPOSITORY_UNAVAILABLE",
+                    "message": "Registered repository is unavailable.",
+                    "request_id": "00000000-0000-4000-8000-000000000000",
+                    "details": null
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/repositories/{repository_id}/files/content": {
+      "get": {
+        "tags": [
+          "repositories"
+        ],
+        "summary": "Read a source file",
+        "description": "Read a supported UTF-8 source file using a repository-relative path.",
+        "operationId": "read_repository_file_api_v1_repositories__repository_id__files_content_get",
+        "parameters": [
+          {
+            "name": "repository_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Repository Id"
+            }
+          },
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Repository-relative source file path.",
+              "examples": [
+                "src/main/java/OrderService.java"
+              ],
+              "title": "Path"
+            },
+            "description": "Repository-relative source file path."
+          },
+          {
+            "name": "start_line",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "First cited source line, inclusive.",
+              "title": "Start Line"
+            },
+            "description": "First cited source line, inclusive."
+          },
+          {
+            "name": "end_line",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Last cited source line, inclusive.",
+              "title": "End Line"
+            },
+            "description": "Last cited source line, inclusive."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepositoryFileContentResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Unsupported source file type.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "UNSUPPORTED_SOURCE_FILE",
+                    "message": "Unsupported source file type.",
+                    "request_id": "00000000-0000-4000-8000-000000000000",
+                    "details": null
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Source file path is not permitted.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "INVALID_SOURCE_PATH",
+                    "message": "Source file path is not permitted.",
+                    "request_id": "00000000-0000-4000-8000-000000000000",
+                    "details": null
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Repository or source file not found.",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "unknown_repository": {
+                    "value": {
+                      "error": {
+                        "code": "REPOSITORY_NOT_FOUND",
+                        "message": "Repository not found.",
+                        "request_id": "00000000-0000-4000-8000-000000000000",
+                        "details": null
+                      }
+                    }
+                  },
+                  "missing_file": {
+                    "value": {
+                      "error": {
+                        "code": "SOURCE_FILE_NOT_FOUND",
+                        "message": "Source file not found.",
+                        "request_id": "00000000-0000-4000-8000-000000000000",
+                        "details": null
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Source file exceeds the size limit.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "SOURCE_FILE_TOO_LARGE",
+                    "message": "Source file exceeds the size limit.",
+                    "request_id": "00000000-0000-4000-8000-000000000000",
+                    "details": null
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "416": {
+            "description": "Requested source lines are unavailable.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "SOURCE_LINE_RANGE_INVALID",
+                    "message": "Requested source lines are unavailable.",
+                    "request_id": "00000000-0000-4000-8000-000000000000",
+                    "details": null
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Registered repository is unavailable.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "REPOSITORY_UNAVAILABLE",
+                    "message": "Registered repository is unavailable.",
+                    "request_id": "00000000-0000-4000-8000-000000000000",
+                    "details": null
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/repositories/{repository_id}/scan": {
+      "post": {
+        "tags": [
+          "repositories"
+        ],
+        "summary": "Scan repository source metadata",
+        "description": "Synchronously summarize supported source files in a registered repository.",
+        "operationId": "scan_repository_api_v1_repositories__repository_id__scan_post",
+        "parameters": [
+          {
+            "name": "repository_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Repository Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepositoryScanResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Repository not found.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "REPOSITORY_NOT_FOUND",
+                    "message": "Repository not found.",
+                    "request_id": "00000000-0000-4000-8000-000000000000",
+                    "details": null
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Repository discovery limit exceeded.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "DISCOVERY_LIMIT_EXCEEDED",
+                    "message": "Repository discovery limit exceeded.",
+                    "request_id": "00000000-0000-4000-8000-000000000000",
+                    "details": null
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Registered repository is unavailable.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "REPOSITORY_UNAVAILABLE",
+                    "message": "Registered repository is unavailable.",
+                    "request_id": "00000000-0000-4000-8000-000000000000",
+                    "details": null
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/repositories/{repository_id}/parse": {
+      "post": {
+        "tags": [
+          "code-intelligence"
+        ],
+        "summary": "Parse a Java source file",
+        "description": "Extract top-level Java classes and their direct methods from a registered repository file.",
+        "operationId": "parse_java_file_api_v1_repositories__repository_id__parse_post",
+        "parameters": [
+          {
+            "name": "repository_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Repository Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JavaParseRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JavaParseResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Unsupported source type or parse language.",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "unsupported_type": {
+                    "value": {
+                      "error": {
+                        "code": "UNSUPPORTED_SOURCE_FILE",
+                        "message": "Unsupported source file type.",
+                        "request_id": "00000000-0000-4000-8000-000000000000",
+                        "details": null
+                      }
+                    }
+                  },
+                  "unsupported_language": {
+                    "value": {
+                      "error": {
+                        "code": "UNSUPPORTED_PARSE_LANGUAGE",
+                        "message": "Only Java source files can be parsed.",
+                        "request_id": "00000000-0000-4000-8000-000000000000",
+                        "details": null
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Source file path is not permitted.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "INVALID_SOURCE_PATH",
+                    "message": "Source file path is not permitted.",
+                    "request_id": "00000000-0000-4000-8000-000000000000",
+                    "details": null
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Repository or source file not found.",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "unknown_repository": {
+                    "value": {
+                      "error": {
+                        "code": "REPOSITORY_NOT_FOUND",
+                        "message": "Repository not found.",
+                        "request_id": "00000000-0000-4000-8000-000000000000",
+                        "details": null
+                      }
+                    }
+                  },
+                  "missing_file": {
+                    "value": {
+                      "error": {
+                        "code": "SOURCE_FILE_NOT_FOUND",
+                        "message": "Source file not found.",
+                        "request_id": "00000000-0000-4000-8000-000000000000",
+                        "details": null
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Source file exceeds the size limit.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "SOURCE_FILE_TOO_LARGE",
+                    "message": "Source file exceeds the size limit.",
+                    "request_id": "00000000-0000-4000-8000-000000000000",
+                    "details": null
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Registered repository is unavailable.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "REPOSITORY_UNAVAILABLE",
+                    "message": "Registered repository is unavailable.",
+                    "request_id": "00000000-0000-4000-8000-000000000000",
+                    "details": null
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/repositories/{repository_id}/symbols": {
+      "get": {
+        "tags": [
+          "code-intelligence"
+        ],
+        "summary": "Extract Java symbols",
+        "description": "Return package, imports, classes, interfaces, methods, constructors, and source context from a Java file.",
+        "operationId": "extract_java_symbols_api_v1_repositories__repository_id__symbols_get",
+        "parameters": [
+          {
+            "name": "repository_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Repository Id"
+            }
+          },
+          {
+            "name": "file_path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Repository-relative Java source file path.",
+              "examples": [
+                "src/main/java/com/example/OrderService.java"
+              ],
+              "title": "File Path"
+            },
+            "description": "Repository-relative Java source file path."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JavaSymbolsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Unsupported source type or parse language.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Source file path is not permitted.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "INVALID_SOURCE_PATH",
+                    "message": "Source file path is not permitted.",
+                    "request_id": "00000000-0000-4000-8000-000000000000",
+                    "details": null
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Repository or source file not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Source file exceeds the size limit.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "SOURCE_FILE_TOO_LARGE",
+                    "message": "Source file exceeds the size limit.",
+                    "request_id": "00000000-0000-4000-8000-000000000000",
+                    "details": null
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Registered repository is unavailable.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "REPOSITORY_UNAVAILABLE",
+                    "message": "Registered repository is unavailable.",
+                    "request_id": "00000000-0000-4000-8000-000000000000",
+                    "details": null
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/repositories/{repository_id}/chunks/preview": {
+      "post": {
+        "tags": [
+          "code-intelligence"
+        ],
+        "summary": "Preview AST-aware Java chunks",
+        "description": "Preview Java declaration chunks with structural metadata. Oversized declarations split at AST boundaries, with marked exact-text fallback parts. Unemitted source ranges are reported; no chunks are stored.",
+        "operationId": "preview_java_chunks_api_v1_repositories__repository_id__chunks_preview_post",
+        "parameters": [
+          {
+            "name": "repository_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Repository Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChunkPreviewRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChunkPreviewResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Unsupported source type or parse language.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Source file path is not permitted.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "INVALID_SOURCE_PATH",
+                    "message": "Source file path is not permitted.",
+                    "request_id": "00000000-0000-4000-8000-000000000000",
+                    "details": null
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Repository or source file not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Source file exceeds the size limit.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "SOURCE_FILE_TOO_LARGE",
+                    "message": "Source file exceeds the size limit.",
+                    "request_id": "00000000-0000-4000-8000-000000000000",
+                    "details": null
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Registered repository is unavailable.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "REPOSITORY_UNAVAILABLE",
+                    "message": "Registered repository is unavailable.",
+                    "request_id": "00000000-0000-4000-8000-000000000000",
+                    "details": null
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/repositories/{repository_id}/chunks/index": {
+      "post": {
+        "tags": [
+          "code-intelligence"
+        ],
+        "summary": "Persist Java chunks for one source file",
+        "description": "Generate AST-aware chunks through the secure reader and atomically replace this file's persisted chunk set.",
+        "operationId": "index_java_chunks_api_v1_repositories__repository_id__chunks_index_post",
+        "parameters": [
+          {
+            "name": "repository_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Repository Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChunkPreviewRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChunkIndexResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Unsupported source type or parse language.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Source file path is not permitted.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "INVALID_SOURCE_PATH",
+                    "message": "Source file path is not permitted.",
+                    "request_id": "00000000-0000-4000-8000-000000000000",
+                    "details": null
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Repository or source file not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Source file exceeds the size limit.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "SOURCE_FILE_TOO_LARGE",
+                    "message": "Source file exceeds the size limit.",
+                    "request_id": "00000000-0000-4000-8000-000000000000",
+                    "details": null
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Cloud database or repository source is unavailable.",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "not_configured": {
+                    "value": {
+                      "error": {
+                        "code": "DATABASE_NOT_CONFIGURED",
+                        "message": "Cloud database is not configured.",
+                        "request_id": "00000000-0000-4000-8000-000000000000",
+                        "details": null
+                      }
+                    }
+                  },
+                  "database_unavailable": {
+                    "value": {
+                      "error": {
+                        "code": "DATABASE_UNAVAILABLE",
+                        "message": "Chunk persistence is unavailable.",
+                        "request_id": "00000000-0000-4000-8000-000000000000",
+                        "details": null
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/repositories/{repository_id}/chunks": {
+      "get": {
+        "tags": [
+          "code-intelligence"
+        ],
+        "summary": "List persisted code chunks",
+        "description": "Return persisted chunks in file-path and source-offset order. Registration or indexing is required.",
+        "operationId": "list_persisted_chunks_api_v1_repositories__repository_id__chunks_get",
+        "parameters": [
+          {
+            "name": "repository_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Repository Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersistedChunksResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Repository not found.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "REPOSITORY_NOT_FOUND",
+                    "message": "Repository not found.",
+                    "request_id": "00000000-0000-4000-8000-000000000000",
+                    "details": null
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Cloud database is not configured or is unavailable.",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "not_configured": {
+                    "value": {
+                      "error": {
+                        "code": "DATABASE_NOT_CONFIGURED",
+                        "message": "Cloud database is not configured.",
+                        "request_id": "00000000-0000-4000-8000-000000000000",
+                        "details": null
+                      }
+                    }
+                  },
+                  "database_unavailable": {
+                    "value": {
+                      "error": {
+                        "code": "DATABASE_UNAVAILABLE",
+                        "message": "Chunk persistence is unavailable.",
+                        "request_id": "00000000-0000-4000-8000-000000000000",
+                        "details": null
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/repositories/{repository_id}/embeddings": {
+      "post": {
+        "tags": [
+          "vector-store"
+        ],
+        "summary": "Generate embeddings for persisted code chunks",
+        "description": "Batch Gemini embeddings for persisted chunks; return counts and model only. Vectors are stored in cloud PostgreSQL and never returned.",
+        "operationId": "generate_repository_embeddings_api_v1_repositories__repository_id__embeddings_post",
+        "parameters": [
+          {
+            "name": "repository_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Repository Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmbeddingGenerationResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Repository not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Provider rate limit exhausted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Provider failed or returned invalid dimensions.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Cloud database or Gemini credentials are unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Provider timeout after bounded retries.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/repositories/{repository_id}/index/status": {
+      "get": {
+        "tags": [
+          "vector-store"
+        ],
+        "summary": "Inspect persisted vector coverage",
+        "description": "Count current vectors for the configured embedding model, dimension, and input format. No vectors are returned.",
+        "operationId": "get_repository_index_status_api_v1_repositories__repository_id__index_status_get",
+        "parameters": [
+          {
+            "name": "repository_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Repository Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IndexStatusResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Repository not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Cloud database is not configured or is unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/search/semantic": {
+      "post": {
+        "tags": [
+          "semantic-search"
+        ],
+        "summary": "Search repository code by meaning",
+        "description": "Embed a developer question and rank current, compatible repository chunks by exact pgvector cosine similarity.",
+        "operationId": "semantic_search_api_v1_search_semantic_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SemanticSearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SemanticSearchResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Repository not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "No compatible embeddings or incompatible configuration.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Embedding provider rate limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Embedding provider failure or invalid vector.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Search is not configured or database unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Embedding provider timeout.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/search/keyword": {
+      "post": {
+        "tags": [
+          "retrieval"
+        ],
+        "summary": "Find Java chunks by exact symbol or full-text keywords",
+        "description": "Exact case-sensitive symbol names rank first, followed by enclosing class names and PostgreSQL full-text matches. Results are restricted to one repository.",
+        "operationId": "keyword_search_api_v1_search_keyword_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KeywordSearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KeywordSearchResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Repository not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Cloud database is not configured or is unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/search/hybrid": {
+      "post": {
+        "tags": [
+          "retrieval"
+        ],
+        "summary": "Fuse semantic and keyword retrieval",
+        "description": "Retrieve bounded candidates from both strategies and rank by reciprocal rank fusion. Both strategies must succeed.",
+        "operationId": "hybrid_search_api_v1_search_hybrid_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HybridSearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HybridSearchResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Repository not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Compatible semantic embeddings are unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Embedding provider rate limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Embedding provider failed or returned an invalid vector.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Search is not configured, database unavailable, or results changed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Embedding provider timeout.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/search/rerank": {
+      "post": {
+        "tags": [
+          "retrieval"
+        ],
+        "summary": "Rerank hybrid code candidates with source metadata",
+        "description": "Run both retrieval strategies, fuse their candidates, then apply deterministic metadata_heuristic_v1 scoring.",
+        "operationId": "rerank_search_api_v1_search_rerank_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RerankRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RerankResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Repository not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Compatible semantic embeddings are unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Embedding provider rate limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Embedding provider failed or returned an invalid vector.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Search is not configured, database unavailable, or candidates changed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Embedding provider timeout.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ask": {
+      "post": {
+        "tags": [
+          "rag"
+        ],
+        "summary": "Answer a repository question using cited source evidence",
+        "description": "Rerank retrieved code, assemble bounded evidence, and request a structured Gemini answer. Citations are checked against supplied evidence.",
+        "operationId": "ask_api_v1_ask_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AskRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AskResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Repository not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Compatible retrieval embeddings are unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Gemini rate limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Provider failure, invalid output, or unsupported citation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Database, retrieval, prompt, or model configuration unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Provider timeout.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/agents/analyze": {
+      "post": {
+        "tags": [
+          "agentic"
+        ],
+        "summary": "Analyze a repository question with a grounded workflow",
+        "description": "Classify intent, then route to grounded code, static dependency, or architecture analysis. Unknown intent requests clarification.",
+        "operationId": "analyze_api_v1_agents_analyze_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnalyzeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyzeResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Repository not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Compatible retrieval embeddings unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Gemini rate limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Provider failure or unsupported answer citation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Retrieval, database, prompts, or model unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Provider timeout.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/chat": {
+      "post": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Analyze a repository message with verified citations",
+        "operationId": "chat_api_v1_chat_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Bad Gateway",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/chat/stream": {
+      "post": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Stream verified repository chat workflow events",
+        "operationId": "chat_stream_api_v1_chat_stream_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Server-Sent Events. See StreamEvent schema and streaming-events.md.",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/StreamEvent"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/evaluations/retrieval": {
+      "post": {
+        "tags": [
+          "evaluation"
+        ],
+        "summary": "Measure four retrieval strategies on a pinned Java sample snapshot",
+        "description": "Run the same versioned question set through semantic, keyword, hybrid, and reranked hybrid search. Return measured Recall@5, MRR, and end-to-end latency.",
+        "operationId": "evaluate_retrieval_api_v1_evaluations_retrieval_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EvaluationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluationResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Repository or dataset not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Repository snapshot does not match or changed during evaluation; embeddings may be unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Indexed repository exceeds the evaluation chunk limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Embedding provider rate limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Embedding provider failure or invalid vector.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Evaluation, retrieval, or database unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Embedding provider timeout.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/repositories/{repository_id}/dependencies/scan": {
+      "post": {
+        "tags": [
+          "dependency-intelligence"
+        ],
+        "summary": "Scan a registered repository for static Java dependencies",
+        "operationId": "scan_api_v1_repositories__repository_id__dependencies_scan_post",
+        "parameters": [
+          {
+            "name": "repository_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Repository Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DependencyScanResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Repository not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Repository discovery or file size limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Database or registered repository unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/repositories/{repository_id}/dependencies": {
+      "get": {
+        "tags": [
+          "dependency-intelligence"
+        ],
+        "summary": "List persisted static Java dependencies",
+        "operationId": "list_dependencies_api_v1_repositories__repository_id__dependencies_get",
+        "parameters": [
+          {
+            "name": "repository_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Repository Id"
+            }
+          },
+          {
+            "name": "symbol",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Symbol"
+            }
+          },
+          {
+            "name": "relationship_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "IMPORTS",
+                    "EXTENDS",
+                    "IMPLEMENTS",
+                    "INJECTS",
+                    "CALLS"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Relationship Type"
+            }
+          },
+          {
+            "name": "direction",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "outgoing",
+                "incoming",
+                "both"
+              ],
+              "type": "string",
+              "default": "both",
+              "title": "Direction"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 100,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DependencyListResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Repository not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Cloud database unavailable or not configured.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/repositories/{repository_id}/index": {
+      "post": {
+        "tags": [
+          "project-indexing"
+        ],
+        "summary": "Queue a durable full-repository Java indexing job",
+        "operationId": "enqueue_api_v1_repositories__repository_id__index_post",
+        "parameters": [
+          {
+            "name": "repository_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Repository Id"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IndexJobResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          },
+          "422": {
+            "description": "Request validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/repositories/{repository_id}/index/jobs/latest": {
+      "get": {
+        "tags": [
+          "project-indexing"
+        ],
+        "summary": "Get the latest persisted indexing job for a repository",
+        "operationId": "get_latest_job_api_v1_repositories__repository_id__index_jobs_latest_get",
+        "parameters": [
+          {
+            "name": "repository_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Repository Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IndexJobResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          },
+          "422": {
+            "description": "Request validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/repositories/{repository_id}/index/jobs/{job_id}": {
+      "get": {
+        "tags": [
+          "project-indexing"
+        ],
+        "summary": "Get a repository-scoped indexing job",
+        "operationId": "get_job_api_v1_repositories__repository_id__index_jobs__job_id__get",
+        "parameters": [
+          {
+            "name": "repository_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Repository Id"
+            }
+          },
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IndexJobResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          },
+          "422": {
+            "description": "Request validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AnalyzeRequest": {
+        "properties": {
+          "repository_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Repository Id"
+          },
+          "question": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Question",
+            "examples": [
+              "How does OrderService create an order?"
+            ]
+          },
+          "top_k": {
+            "type": "integer",
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Top K",
+            "default": 5
+          }
+        },
+        "type": "object",
+        "required": [
+          "repository_id",
+          "question"
+        ],
+        "title": "AnalyzeRequest",
+        "description": "Use the same repository, question, and bounded top-k validation as RAG."
+      },
+      "AnalyzeResponse": {
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Request Id"
+          },
+          "repository_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Repository Id"
+          },
+          "answer": {
+            "type": "string",
+            "title": "Answer"
+          },
+          "citations": {
+            "items": {
+              "$ref": "#/components/schemas/Citation"
+            },
+            "type": "array",
+            "title": "Citations"
+          },
+          "verification_status": {
+            "type": "string",
+            "enum": [
+              "CITATION_VERIFIED",
+              "PARTIALLY_VERIFIED",
+              "INSUFFICIENT_EVIDENCE",
+              "NOT_APPLICABLE"
+            ],
+            "title": "Verification Status"
+          },
+          "unsupported_claims": {
+            "items": {
+              "$ref": "#/components/schemas/UnsupportedClaim"
+            },
+            "type": "array",
+            "title": "Unsupported Claims"
+          },
+          "claim_verifications": {
+            "items": {
+              "$ref": "#/components/schemas/ClaimVerification"
+            },
+            "type": "array",
+            "title": "Claim Verifications"
+          },
+          "agents_executed": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "code_analysis",
+                "dependency_analysis",
+                "architecture_analysis"
+              ]
+            },
+            "type": "array",
+            "title": "Agents Executed"
+          },
+          "prompt_versions": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PromptVersions"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "workflow_type": {
+            "type": "string",
+            "const": "repository_analysis_v1",
+            "title": "Workflow Type",
+            "default": "repository_analysis_v1"
+          },
+          "workflow_metadata": {
+            "$ref": "#/components/schemas/WorkflowMetadata"
+          }
+        },
+        "type": "object",
+        "required": [
+          "request_id",
+          "repository_id",
+          "answer",
+          "citations",
+          "verification_status",
+          "unsupported_claims",
+          "claim_verifications",
+          "agents_executed",
+          "prompt_versions",
+          "workflow_metadata"
+        ],
+        "title": "AnalyzeResponse"
+      },
+      "ApprovedAliasesResponse": {
+        "properties": {
+          "aliases": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Aliases"
+          }
+        },
+        "type": "object",
+        "required": [
+          "aliases"
+        ],
+        "title": "ApprovedAliasesResponse"
+      },
+      "AskRequest": {
+        "properties": {
+          "repository_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Repository Id"
+          },
+          "question": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Question",
+            "examples": [
+              "How does OrderService create an order?"
+            ]
+          },
+          "top_k": {
+            "type": "integer",
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Top K",
+            "default": 5
+          }
+        },
+        "type": "object",
+        "required": [
+          "repository_id",
+          "question"
+        ],
+        "title": "AskRequest"
+      },
+      "AskResponse": {
+        "properties": {
+          "repository_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Repository Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ANSWERED",
+              "INSUFFICIENT_EVIDENCE"
+            ],
+            "title": "Status"
+          },
+          "answer": {
+            "type": "string",
+            "title": "Answer"
+          },
+          "citations": {
+            "items": {
+              "$ref": "#/components/schemas/Citation"
+            },
+            "type": "array",
+            "title": "Citations"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "HIGH",
+              "MEDIUM",
+              "LOW",
+              "INSUFFICIENT"
+            ],
+            "title": "Confidence"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Limitations"
+          },
+          "excluded_evidence_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Excluded Evidence Ids"
+          },
+          "prompt_versions": {
+            "$ref": "#/components/schemas/PromptVersions"
+          },
+          "model_identifier": {
+            "type": "string",
+            "title": "Model Identifier"
+          }
+        },
+        "type": "object",
+        "required": [
+          "repository_id",
+          "status",
+          "answer",
+          "citations",
+          "confidence",
+          "limitations",
+          "excluded_evidence_ids",
+          "prompt_versions",
+          "model_identifier"
+        ],
+        "title": "AskResponse"
+      },
+      "ChatCitation": {
+        "properties": {
+          "evidence_id": {
+            "type": "string",
+            "title": "Evidence Id"
+          },
+          "file_path": {
+            "type": "string",
+            "title": "File Path"
+          },
+          "start_line": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Start Line"
+          },
+          "end_line": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "End Line"
+          },
+          "qualified_symbol": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qualified Symbol"
+          }
+        },
+        "type": "object",
+        "required": [
+          "evidence_id",
+          "file_path",
+          "start_line",
+          "end_line"
+        ],
+        "title": "ChatCitation"
+      },
+      "ChatPromptVersions": {
+        "properties": {
+          "answer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PromptVersions"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "classifier": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PromptVersions"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "answer",
+          "classifier"
+        ],
+        "title": "ChatPromptVersions"
+      },
+      "ChatRequest": {
+        "properties": {
+          "repository_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Repository Id"
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Message"
+          },
+          "conversation_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conversation Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "repository_id",
+          "message"
+        ],
+        "title": "ChatRequest"
+      },
+      "ChatResponse": {
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Request Id"
+          },
+          "conversation_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Conversation Id"
+          },
+          "repository_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Repository Id"
+          },
+          "answer": {
+            "type": "string",
+            "title": "Answer"
+          },
+          "citations": {
+            "items": {
+              "$ref": "#/components/schemas/ChatCitation"
+            },
+            "type": "array",
+            "title": "Citations"
+          },
+          "agents_executed": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "code_analysis",
+                "dependency_analysis",
+                "architecture_analysis"
+              ]
+            },
+            "type": "array",
+            "title": "Agents Executed"
+          },
+          "classified_intent": {
+            "type": "string",
+            "enum": [
+              "CODE_LOOKUP",
+              "CODE_EXPLANATION",
+              "DEPENDENCY_ANALYSIS",
+              "ARCHITECTURE_ANALYSIS",
+              "UNKNOWN"
+            ],
+            "title": "Classified Intent"
+          },
+          "verification_status": {
+            "type": "string",
+            "enum": [
+              "CITATION_VERIFIED",
+              "PARTIALLY_VERIFIED",
+              "INSUFFICIENT_EVIDENCE",
+              "NOT_APPLICABLE"
+            ],
+            "title": "Verification Status"
+          },
+          "workflow_status": {
+            "type": "string",
+            "enum": [
+              "ANSWERED",
+              "INSUFFICIENT_EVIDENCE",
+              "CLARIFICATION_REQUIRED"
+            ],
+            "title": "Workflow Status"
+          },
+          "execution_duration_ms": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Execution Duration Ms"
+          },
+          "prompt_versions": {
+            "$ref": "#/components/schemas/ChatPromptVersions"
+          },
+          "model_identifier": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Identifier"
+          }
+        },
+        "type": "object",
+        "required": [
+          "request_id",
+          "conversation_id",
+          "repository_id",
+          "answer",
+          "citations",
+          "agents_executed",
+          "classified_intent",
+          "verification_status",
+          "workflow_status",
+          "execution_duration_ms",
+          "prompt_versions",
+          "model_identifier"
+        ],
+        "title": "ChatResponse"
+      },
+      "ChunkIndexResponse": {
+        "properties": {
+          "repository_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Repository Id"
+          },
+          "file_path": {
+            "type": "string",
+            "title": "File Path"
+          },
+          "total_chunks": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total Chunks"
+          }
+        },
+        "type": "object",
+        "required": [
+          "repository_id",
+          "file_path",
+          "total_chunks"
+        ],
+        "title": "ChunkIndexResponse"
+      },
+      "ChunkPreviewRequest": {
+        "properties": {
+          "file_path": {
+            "type": "string",
+            "minLength": 1,
+            "title": "File Path"
+          },
+          "max_chunk_chars": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1000000.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Chunk Chars"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "file_path"
+        ],
+        "title": "ChunkPreviewRequest",
+        "examples": [
+          {
+            "file_path": "src/main/java/com/example/OrderService.java",
+            "max_chunk_chars": 1500
+          }
+        ]
+      },
+      "ChunkPreviewResponse": {
+        "properties": {
+          "file_path": {
+            "type": "string",
+            "title": "File Path"
+          },
+          "total_chunks": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total Chunks"
+          },
+          "chunks": {
+            "items": {
+              "$ref": "#/components/schemas/JavaChunk"
+            },
+            "type": "array",
+            "title": "Chunks"
+          },
+          "excluded_spans": {
+            "items": {
+              "$ref": "#/components/schemas/ExcludedSourceSpan"
+            },
+            "type": "array",
+            "title": "Excluded Spans"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file_path",
+          "total_chunks",
+          "chunks"
+        ],
+        "title": "ChunkPreviewResponse"
+      },
+      "Citation": {
+        "properties": {
+          "evidence_id": {
+            "type": "string",
+            "title": "Evidence Id"
+          },
+          "file_path": {
+            "type": "string",
+            "title": "File Path"
+          },
+          "start_line": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Start Line"
+          },
+          "end_line": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "End Line"
+          }
+        },
+        "type": "object",
+        "required": [
+          "evidence_id",
+          "file_path",
+          "start_line",
+          "end_line"
+        ],
+        "title": "Citation"
+      },
+      "ClaimVerification": {
+        "properties": {
+          "claim": {
+            "type": "string",
+            "title": "Claim"
+          },
+          "claim_type": {
+            "type": "string",
+            "enum": [
+              "OBSERVATION",
+              "RECOMMENDATION"
+            ],
+            "title": "Claim Type"
+          },
+          "evidence_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Evidence Ids"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "CITATION_VERIFIED",
+              "INSUFFICIENT_EVIDENCE"
+            ],
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "claim",
+          "claim_type",
+          "evidence_ids",
+          "status"
+        ],
+        "title": "ClaimVerification"
+      },
+      "DependencyListResponse": {
+        "properties": {
+          "repository_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Repository Id"
+          },
+          "total_relationships": {
+            "type": "integer",
+            "title": "Total Relationships"
+          },
+          "relationships": {
+            "items": {
+              "$ref": "#/components/schemas/DependencyRelationship"
+            },
+            "type": "array",
+            "title": "Relationships"
+          }
+        },
+        "type": "object",
+        "required": [
+          "repository_id",
+          "total_relationships",
+          "relationships"
+        ],
+        "title": "DependencyListResponse"
+      },
+      "DependencyRelationship": {
+        "properties": {
+          "relationship_id": {
+            "type": "string",
+            "title": "Relationship Id"
+          },
+          "repository_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Repository Id"
+          },
+          "source_symbol": {
+            "type": "string",
+            "title": "Source Symbol"
+          },
+          "target_symbol": {
+            "type": "string",
+            "title": "Target Symbol"
+          },
+          "relationship_type": {
+            "type": "string",
+            "enum": [
+              "IMPORTS",
+              "EXTENDS",
+              "IMPLEMENTS",
+              "INJECTS",
+              "CALLS"
+            ],
+            "title": "Relationship Type"
+          },
+          "file_path": {
+            "type": "string",
+            "title": "File Path"
+          },
+          "start_line": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Start Line"
+          },
+          "end_line": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "End Line"
+          },
+          "resolution_status": {
+            "type": "string",
+            "enum": [
+              "RESOLVED",
+              "UNRESOLVED"
+            ],
+            "title": "Resolution Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "relationship_id",
+          "repository_id",
+          "source_symbol",
+          "target_symbol",
+          "relationship_type",
+          "file_path",
+          "start_line",
+          "end_line",
+          "resolution_status"
+        ],
+        "title": "DependencyRelationship"
+      },
+      "DependencyScanResponse": {
+        "properties": {
+          "repository_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Repository Id"
+          },
+          "status": {
+            "type": "string",
+            "const": "COMPLETED",
+            "title": "Status",
+            "default": "COMPLETED"
+          },
+          "total_relationships": {
+            "type": "integer",
+            "title": "Total Relationships"
+          }
+        },
+        "type": "object",
+        "required": [
+          "repository_id",
+          "total_relationships"
+        ],
+        "title": "DependencyScanResponse"
+      },
+      "EmbeddingGenerationResponse": {
+        "properties": {
+          "repository_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Repository Id"
+          },
+          "total_chunks": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total Chunks"
+          },
+          "generated": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Generated"
+          },
+          "skipped": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Skipped"
+          },
+          "failed": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Failed"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model"
+          }
+        },
+        "type": "object",
+        "required": [
+          "repository_id",
+          "total_chunks",
+          "generated",
+          "skipped",
+          "failed",
+          "model"
+        ],
+        "title": "EmbeddingGenerationResponse"
+      },
+      "ErrorDetail": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "request_id": {
+            "type": "string",
+            "title": "Request Id"
+          },
+          "details": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Details"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "message",
+          "request_id"
+        ],
+        "title": "ErrorDetail"
+      },
+      "ErrorResponse": {
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorDetail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "title": "ErrorResponse"
+      },
+      "EvaluationRequest": {
+        "properties": {
+          "repository_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Repository Id"
+          },
+          "dataset": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{0,99}$",
+            "title": "Dataset",
+            "examples": [
+              "java-code-search-v1"
+            ]
+          },
+          "top_k": {
+            "type": "integer",
+            "maximum": 20.0,
+            "minimum": 5.0,
+            "title": "Top K",
+            "default": 5
+          }
+        },
+        "type": "object",
+        "required": [
+          "repository_id",
+          "dataset"
+        ],
+        "title": "EvaluationRequest"
+      },
+      "EvaluationResponse": {
+        "properties": {
+          "repository_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Repository Id"
+          },
+          "dataset": {
+            "type": "string",
+            "title": "Dataset"
+          },
+          "dataset_version": {
+            "type": "string",
+            "title": "Dataset Version"
+          },
+          "repository_snapshot_id": {
+            "type": "string",
+            "title": "Repository Snapshot Id"
+          },
+          "query_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Query Count"
+          },
+          "strategies": {
+            "items": {
+              "$ref": "#/components/schemas/StrategyMetrics"
+            },
+            "type": "array",
+            "title": "Strategies"
+          },
+          "evaluated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Evaluated At"
+          },
+          "embedding_model_identifier": {
+            "type": "string",
+            "title": "Embedding Model Identifier"
+          },
+          "reranker_version": {
+            "type": "string",
+            "title": "Reranker Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "repository_id",
+          "dataset",
+          "dataset_version",
+          "repository_snapshot_id",
+          "query_count",
+          "strategies",
+          "evaluated_at",
+          "embedding_model_identifier",
+          "reranker_version"
+        ],
+        "title": "EvaluationResponse"
+      },
+      "ExcludedSourceSpan": {
+        "properties": {
+          "start_byte": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Start Byte"
+          },
+          "end_byte": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "End Byte"
+          },
+          "start_line": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Start Line"
+          },
+          "end_line": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "End Line"
+          },
+          "reason": {
+            "type": "string",
+            "const": "outside_chunked_declarations",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "start_byte",
+          "end_byte",
+          "start_line",
+          "end_line",
+          "reason"
+        ],
+        "title": "ExcludedSourceSpan"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "healthy",
+            "title": "Status"
+          },
+          "service": {
+            "type": "string",
+            "const": "archmind",
+            "title": "Service"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "service"
+        ],
+        "title": "HealthResponse",
+        "description": "Response returned by the health check."
+      },
+      "HybridSearchRequest": {
+        "properties": {
+          "repository_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Repository Id"
+          },
+          "query": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Query",
+            "examples": [
+              "How are orders processed?"
+            ]
+          },
+          "top_k": {
+            "type": "integer",
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Top K",
+            "default": 5
+          }
+        },
+        "type": "object",
+        "required": [
+          "repository_id",
+          "query"
+        ],
+        "title": "HybridSearchRequest"
+      },
+      "HybridSearchResponse": {
+        "properties": {
+          "repository_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Repository Id"
+          },
+          "query": {
+            "type": "string",
+            "title": "Query"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/HybridSearchResult"
+            },
+            "type": "array",
+            "title": "Results"
+          }
+        },
+        "type": "object",
+        "required": [
+          "repository_id",
+          "query",
+          "results"
+        ],
+        "title": "HybridSearchResponse"
+      },
+      "HybridSearchResult": {
+        "properties": {
+          "chunk_id": {
+            "type": "string",
+            "title": "Chunk Id"
+          },
+          "file_path": {
+            "type": "string",
+            "title": "File Path"
+          },
+          "qualified_name": {
+            "type": "string",
+            "title": "Qualified Name"
+          },
+          "rrf_score": {
+            "type": "number",
+            "title": "Rrf Score"
+          },
+          "retrieval_sources": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "semantic",
+                "keyword"
+              ]
+            },
+            "type": "array",
+            "title": "Retrieval Sources"
+          },
+          "source_ranks": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "propertyNames": {
+              "enum": [
+                "semantic",
+                "keyword"
+              ]
+            },
+            "type": "object",
+            "title": "Source Ranks"
+          }
+        },
+        "type": "object",
+        "required": [
+          "chunk_id",
+          "file_path",
+          "qualified_name",
+          "rrf_score",
+          "retrieval_sources",
+          "source_ranks"
+        ],
+        "title": "HybridSearchResult"
+      },
+      "IndexJobResponse": {
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Job Id"
+          },
+          "repository_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Repository Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "QUEUED",
+              "RUNNING",
+              "COMPLETED",
+              "FAILED"
+            ],
+            "title": "Status"
+          },
+          "current_stage": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "DISCOVERING",
+                  "PARSING",
+                  "CHUNKING",
+                  "PERSISTING",
+                  "EMBEDDING",
+                  "VECTOR_INDEXING",
+                  "DEPENDENCY_EXTRACTION",
+                  "COMPLETED"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Stage"
+          },
+          "completed_stages": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "DISCOVERING",
+                "PARSING",
+                "CHUNKING",
+                "PERSISTING",
+                "EMBEDDING",
+                "VECTOR_INDEXING",
+                "DEPENDENCY_EXTRACTION",
+                "COMPLETED"
+              ]
+            },
+            "type": "array",
+            "title": "Completed Stages"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "job_id",
+          "repository_id",
+          "status",
+          "current_stage",
+          "completed_stages",
+          "started_at",
+          "completed_at",
+          "error_code",
+          "error_message"
+        ],
+        "title": "IndexJobResponse"
+      },
+      "IndexStatusResponse": {
+        "properties": {
+          "repository_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Repository Id"
+          },
+          "total_chunks": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total Chunks"
+          },
+          "embedded_chunks": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Embedded Chunks"
+          },
+          "pending_chunks": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Pending Chunks"
+          },
+          "failed_chunks": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Failed Chunks"
+          },
+          "index_status": {
+            "type": "string",
+            "enum": [
+              "EMPTY",
+              "PENDING",
+              "PARTIAL",
+              "FAILED",
+              "READY"
+            ],
+            "title": "Index Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "repository_id",
+          "total_chunks",
+          "embedded_chunks",
+          "pending_chunks",
+          "failed_chunks",
+          "index_status"
+        ],
+        "title": "IndexStatusResponse"
+      },
+      "JavaCallableSymbol": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "method",
+              "constructor"
+            ],
+            "title": "Kind"
+          },
+          "qualified_name": {
+            "type": "string",
+            "title": "Qualified Name"
+          },
+          "enclosing_type": {
+            "type": "string",
+            "title": "Enclosing Type"
+          },
+          "signature": {
+            "type": "string",
+            "title": "Signature"
+          },
+          "parameters": {
+            "items": {
+              "$ref": "#/components/schemas/JavaSymbolParameter"
+            },
+            "type": "array",
+            "title": "Parameters"
+          },
+          "annotations": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Annotations"
+          },
+          "start_line": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Start Line"
+          },
+          "end_line": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "End Line"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "kind",
+          "qualified_name",
+          "enclosing_type",
+          "signature",
+          "parameters",
+          "annotations",
+          "start_line",
+          "end_line"
+        ],
+        "title": "JavaCallableSymbol"
+      },
+      "JavaChunk": {
+        "properties": {
+          "chunk_id": {
+            "type": "string",
+            "title": "Chunk Id"
+          },
+          "repository_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Repository Id"
+          },
+          "file_path": {
+            "type": "string",
+            "title": "File Path"
+          },
+          "language": {
+            "type": "string",
+            "const": "java",
+            "title": "Language"
+          },
+          "chunk_type": {
+            "type": "string",
+            "enum": [
+              "method",
+              "constructor",
+              "class",
+              "method_part",
+              "constructor_part",
+              "class_part"
+            ],
+            "title": "Chunk Type"
+          },
+          "parent_chunk_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Chunk Id"
+          },
+          "sequence": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sequence"
+          },
+          "split_strategy": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "ast",
+                  "fallback"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Split Strategy"
+          },
+          "start_byte": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Start Byte"
+          },
+          "end_byte": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "End Byte"
+          },
+          "symbol_name": {
+            "type": "string",
+            "title": "Symbol Name"
+          },
+          "qualified_name": {
+            "type": "string",
+            "title": "Qualified Name"
+          },
+          "parent_symbol": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Symbol"
+          },
+          "package_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Package Name"
+          },
+          "imports": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Imports"
+          },
+          "annotations": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Annotations"
+          },
+          "start_line": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Start Line"
+          },
+          "end_line": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "End Line"
+          },
+          "content": {
+            "type": "string",
+            "title": "Content"
+          },
+          "contextual_header": {
+            "type": "string",
+            "title": "Contextual Header"
+          }
+        },
+        "type": "object",
+        "required": [
+          "chunk_id",
+          "repository_id",
+          "file_path",
+          "language",
+          "chunk_type",
+          "start_byte",
+          "end_byte",
+          "symbol_name",
+          "qualified_name",
+          "parent_symbol",
+          "package_name",
+          "imports",
+          "annotations",
+          "start_line",
+          "end_line",
+          "content",
+          "contextual_header"
+        ],
+        "title": "JavaChunk"
+      },
+      "JavaClass": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "start_line": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Start Line"
+          },
+          "end_line": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "End Line"
+          },
+          "methods": {
+            "items": {
+              "$ref": "#/components/schemas/JavaMethod"
+            },
+            "type": "array",
+            "title": "Methods"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "start_line",
+          "end_line",
+          "methods"
+        ],
+        "title": "JavaClass"
+      },
+      "JavaMethod": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "start_line": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Start Line"
+          },
+          "end_line": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "End Line"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "start_line",
+          "end_line"
+        ],
+        "title": "JavaMethod"
+      },
+      "JavaParseRequest": {
+        "properties": {
+          "file_path": {
+            "type": "string",
+            "minLength": 1,
+            "title": "File Path"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "file_path"
+        ],
+        "title": "JavaParseRequest",
+        "examples": [
+          {
+            "file_path": "src/main/java/com/example/OrderService.java"
+          }
+        ]
+      },
+      "JavaParseResponse": {
+        "properties": {
+          "file_path": {
+            "type": "string",
+            "title": "File Path"
+          },
+          "language": {
+            "type": "string",
+            "const": "java",
+            "title": "Language"
+          },
+          "has_syntax_errors": {
+            "type": "boolean",
+            "title": "Has Syntax Errors"
+          },
+          "classes": {
+            "items": {
+              "$ref": "#/components/schemas/JavaClass"
+            },
+            "type": "array",
+            "title": "Classes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file_path",
+          "language",
+          "has_syntax_errors",
+          "classes"
+        ],
+        "title": "JavaParseResponse"
+      },
+      "JavaSymbolParameter": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "type"
+        ],
+        "title": "JavaSymbolParameter"
+      },
+      "JavaSymbolsResponse": {
+        "properties": {
+          "file_path": {
+            "type": "string",
+            "title": "File Path"
+          },
+          "package": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Package"
+          },
+          "imports": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Imports"
+          },
+          "symbols": {
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/JavaTypeSymbol"
+                },
+                {
+                  "$ref": "#/components/schemas/JavaCallableSymbol"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Symbols"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file_path",
+          "package",
+          "imports",
+          "symbols"
+        ],
+        "title": "JavaSymbolsResponse"
+      },
+      "JavaTypeSymbol": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "class",
+              "interface"
+            ],
+            "title": "Kind"
+          },
+          "qualified_name": {
+            "type": "string",
+            "title": "Qualified Name"
+          },
+          "enclosing_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enclosing Type"
+          },
+          "annotations": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Annotations"
+          },
+          "start_line": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Start Line"
+          },
+          "end_line": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "End Line"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "kind",
+          "qualified_name",
+          "enclosing_type",
+          "annotations",
+          "start_line",
+          "end_line"
+        ],
+        "title": "JavaTypeSymbol"
+      },
+      "KeywordSearchRequest": {
+        "properties": {
+          "repository_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Repository Id"
+          },
+          "query": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Query",
+            "examples": [
+              "OrderService"
+            ]
+          },
+          "top_k": {
+            "type": "integer",
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Top K",
+            "default": 5
+          }
+        },
+        "type": "object",
+        "required": [
+          "repository_id",
+          "query"
+        ],
+        "title": "KeywordSearchRequest"
+      },
+      "KeywordSearchResponse": {
+        "properties": {
+          "repository_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Repository Id"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/KeywordSearchResult"
+            },
+            "type": "array",
+            "title": "Results"
+          }
+        },
+        "type": "object",
+        "required": [
+          "repository_id",
+          "results"
+        ],
+        "title": "KeywordSearchResponse"
+      },
+      "KeywordSearchResult": {
+        "properties": {
+          "chunk_id": {
+            "type": "string",
+            "title": "Chunk Id"
+          },
+          "file_path": {
+            "type": "string",
+            "title": "File Path"
+          },
+          "symbol_name": {
+            "type": "string",
+            "title": "Symbol Name"
+          },
+          "start_line": {
+            "type": "integer",
+            "title": "Start Line"
+          },
+          "end_line": {
+            "type": "integer",
+            "title": "End Line"
+          },
+          "match_type": {
+            "type": "string",
+            "enum": [
+              "EXACT_SYMBOL",
+              "EXACT_PARENT_SYMBOL",
+              "FULL_TEXT"
+            ],
+            "title": "Match Type"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score"
+          }
+        },
+        "type": "object",
+        "required": [
+          "chunk_id",
+          "file_path",
+          "symbol_name",
+          "start_line",
+          "end_line",
+          "match_type",
+          "score"
+        ],
+        "title": "KeywordSearchResult"
+      },
+      "PersistedChunksResponse": {
+        "properties": {
+          "repository_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Repository Id"
+          },
+          "total_chunks": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total Chunks"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Offset"
+          },
+          "chunks": {
+            "items": {
+              "$ref": "#/components/schemas/JavaChunk"
+            },
+            "type": "array",
+            "title": "Chunks"
+          }
+        },
+        "type": "object",
+        "required": [
+          "repository_id",
+          "total_chunks",
+          "limit",
+          "offset",
+          "chunks"
+        ],
+        "title": "PersistedChunksResponse"
+      },
+      "PromptVersions": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "system": {
+            "type": "string",
+            "title": "System"
+          },
+          "user": {
+            "type": "string",
+            "title": "User"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "system",
+          "user"
+        ],
+        "title": "PromptVersions"
+      },
+      "QuestionExampleResponse": {
+        "properties": {
+          "example_id": {
+            "type": "string",
+            "title": "Example Id"
+          },
+          "question": {
+            "type": "string",
+            "title": "Question"
+          }
+        },
+        "type": "object",
+        "required": [
+          "example_id",
+          "question"
+        ],
+        "title": "QuestionExampleResponse",
+        "description": "An example engineering question."
+      },
+      "QuestionValidationRequest": {
+        "properties": {
+          "question": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Question"
+          }
+        },
+        "type": "object",
+        "required": [
+          "question"
+        ],
+        "title": "QuestionValidationRequest",
+        "description": "A question to normalize and validate.",
+        "examples": [
+          {
+            "question": "  Where is OrderService implemented?  "
+          }
+        ]
+      },
+      "QuestionValidationResponse": {
+        "properties": {
+          "valid": {
+            "type": "boolean",
+            "title": "Valid"
+          },
+          "normalized_question": {
+            "type": "string",
+            "title": "Normalized Question"
+          }
+        },
+        "type": "object",
+        "required": [
+          "valid",
+          "normalized_question"
+        ],
+        "title": "QuestionValidationResponse",
+        "description": "The normalized result of a valid question.",
+        "examples": [
+          {
+            "normalized_question": "Where is OrderService implemented?",
+            "valid": true
+          }
+        ]
+      },
+      "RepositoryFile": {
+        "properties": {
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "language": {
+            "type": "string",
+            "enum": [
+              "java",
+              "python",
+              "typescript"
+            ],
+            "title": "Language"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "title": "Size Bytes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "path",
+          "language",
+          "size_bytes"
+        ],
+        "title": "RepositoryFile"
+      },
+      "RepositoryFileContentResponse": {
+        "properties": {
+          "repository_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Repository Id"
+          },
+          "file_path": {
+            "type": "string",
+            "title": "File Path"
+          },
+          "language": {
+            "type": "string",
+            "enum": [
+              "java",
+              "python",
+              "typescript"
+            ],
+            "title": "Language"
+          },
+          "line_count": {
+            "type": "integer",
+            "title": "Line Count"
+          },
+          "content": {
+            "type": "string",
+            "title": "Content"
+          },
+          "start_line": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Line"
+          },
+          "end_line": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Line"
+          },
+          "total_line_count": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Line Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "repository_id",
+          "file_path",
+          "language",
+          "line_count",
+          "content"
+        ],
+        "title": "RepositoryFileContentResponse"
+      },
+      "RepositoryFilesResponse": {
+        "properties": {
+          "repository_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Repository Id"
+          },
+          "total_files": {
+            "type": "integer",
+            "title": "Total Files"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/RepositoryFile"
+            },
+            "type": "array",
+            "title": "Files"
+          }
+        },
+        "type": "object",
+        "required": [
+          "repository_id",
+          "total_files",
+          "files"
+        ],
+        "title": "RepositoryFilesResponse"
+      },
+      "RepositoryLanguageCounts": {
+        "properties": {
+          "java": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Java"
+          },
+          "python": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Python"
+          },
+          "typescript": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Typescript"
+          }
+        },
+        "type": "object",
+        "required": [
+          "java",
+          "python",
+          "typescript"
+        ],
+        "title": "RepositoryLanguageCounts"
+      },
+      "RepositoryListResponse": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Offset"
+          },
+          "repositories": {
+            "items": {
+              "$ref": "#/components/schemas/RepositoryRegistrationResponse"
+            },
+            "type": "array",
+            "title": "Repositories"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "limit",
+          "offset",
+          "repositories"
+        ],
+        "title": "RepositoryListResponse"
+      },
+      "RepositoryRegistrationRequest": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "source_alias": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+            "title": "Source Alias"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "source_alias"
+        ],
+        "title": "RepositoryRegistrationRequest",
+        "examples": [
+          {
+            "name": "ecommerce-service",
+            "source_alias": "sample-ecommerce"
+          }
+        ]
+      },
+      "RepositoryRegistrationResponse": {
+        "properties": {
+          "repository_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Repository Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "source_alias": {
+            "type": "string",
+            "title": "Source Alias"
+          },
+          "status": {
+            "type": "string",
+            "const": "REGISTERED",
+            "title": "Status"
+          },
+          "registered_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Registered At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "repository_id",
+          "name",
+          "source_alias",
+          "status",
+          "registered_at"
+        ],
+        "title": "RepositoryRegistrationResponse"
+      },
+      "RepositoryScanResponse": {
+        "properties": {
+          "repository_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Repository Id"
+          },
+          "status": {
+            "type": "string",
+            "const": "COMPLETED",
+            "title": "Status"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/RepositoryScanSummary"
+          }
+        },
+        "type": "object",
+        "required": [
+          "repository_id",
+          "status",
+          "summary"
+        ],
+        "title": "RepositoryScanResponse"
+      },
+      "RepositoryScanSummary": {
+        "properties": {
+          "total_files": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total Files"
+          },
+          "total_size_bytes": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total Size Bytes"
+          },
+          "languages": {
+            "$ref": "#/components/schemas/RepositoryLanguageCounts"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total_files",
+          "total_size_bytes",
+          "languages"
+        ],
+        "title": "RepositoryScanSummary"
+      },
+      "RerankRequest": {
+        "properties": {
+          "repository_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Repository Id"
+          },
+          "query": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Query",
+            "examples": [
+              "Where is payment processing implemented?"
+            ]
+          },
+          "top_k": {
+            "type": "integer",
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Top K",
+            "default": 5
+          }
+        },
+        "type": "object",
+        "required": [
+          "repository_id",
+          "query"
+        ],
+        "title": "RerankRequest"
+      },
+      "RerankResponse": {
+        "properties": {
+          "repository_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Repository Id"
+          },
+          "reranker": {
+            "type": "string",
+            "title": "Reranker"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/RerankResult"
+            },
+            "type": "array",
+            "title": "Results"
+          }
+        },
+        "type": "object",
+        "required": [
+          "repository_id",
+          "reranker",
+          "results"
+        ],
+        "title": "RerankResponse"
+      },
+      "RerankResult": {
+        "properties": {
+          "chunk_id": {
+            "type": "string",
+            "title": "Chunk Id"
+          },
+          "file_path": {
+            "type": "string",
+            "title": "File Path"
+          },
+          "original_rank": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Original Rank"
+          },
+          "rerankerank": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Rerankerank"
+          },
+          "rerank_score": {
+            "type": "number",
+            "title": "Rerank Score"
+          },
+          "reranker_version": {
+            "type": "string",
+            "title": "Reranker Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "chunk_id",
+          "file_path",
+          "original_rank",
+          "rerankerank",
+          "rerank_score",
+          "reranker_version"
+        ],
+        "title": "RerankResult"
+      },
+      "SearchResult": {
+        "properties": {
+          "chunk_id": {
+            "type": "string",
+            "title": "Chunk Id"
+          },
+          "file_path": {
+            "type": "string",
+            "title": "File Path"
+          },
+          "symbol_name": {
+            "type": "string",
+            "title": "Symbol Name"
+          },
+          "start_line": {
+            "type": "integer",
+            "title": "Start Line"
+          },
+          "end_line": {
+            "type": "integer",
+            "title": "End Line"
+          },
+          "similarity_score": {
+            "type": "number",
+            "title": "Similarity Score"
+          },
+          "content": {
+            "type": "string",
+            "title": "Content"
+          }
+        },
+        "type": "object",
+        "required": [
+          "chunk_id",
+          "file_path",
+          "symbol_name",
+          "start_line",
+          "end_line",
+          "similarity_score",
+          "content"
+        ],
+        "title": "SearchResult"
+      },
+      "SemanticSearchRequest": {
+        "properties": {
+          "repository_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Repository Id"
+          },
+          "query": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Query",
+            "examples": [
+              "Where is payment processing implemented?"
+            ]
+          },
+          "top_k": {
+            "type": "integer",
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Top K",
+            "default": 5
+          }
+        },
+        "type": "object",
+        "required": [
+          "repository_id",
+          "query"
+        ],
+        "title": "SemanticSearchRequest"
+      },
+      "SemanticSearchResponse": {
+        "properties": {
+          "repository_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Repository Id"
+          },
+          "query": {
+            "type": "string",
+            "title": "Query"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/SearchResult"
+            },
+            "type": "array",
+            "title": "Results"
+          }
+        },
+        "type": "object",
+        "required": [
+          "repository_id",
+          "query",
+          "results"
+        ],
+        "title": "SemanticSearchResponse"
+      },
+      "StrategyMetrics": {
+        "properties": {
+          "strategy": {
+            "type": "string",
+            "enum": [
+              "semantic",
+              "keyword",
+              "hybrid",
+              "hybrid_reranked"
+            ],
+            "title": "Strategy"
+          },
+          "recall_at_5": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Recall At 5"
+          },
+          "mrr": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Mrr"
+          },
+          "average_latency_ms": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Average Latency Ms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "strategy",
+          "recall_at_5",
+          "mrr",
+          "average_latency_ms"
+        ],
+        "title": "StrategyMetrics"
+      },
+      "UnsupportedClaim": {
+        "properties": {
+          "claim": {
+            "type": "string",
+            "title": "Claim"
+          },
+          "claim_type": {
+            "type": "string",
+            "enum": [
+              "OBSERVATION",
+              "RECOMMENDATION"
+            ],
+            "title": "Claim Type"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "claim",
+          "claim_type",
+          "reason"
+        ],
+        "title": "UnsupportedClaim"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "WorkflowMetadata": {
+        "properties": {
+          "completed_nodes": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "classify_intent",
+                "code_analysis",
+                "dependency_analysis",
+                "architecture_analysis",
+                "evidence_aggregation",
+                "evidence_verification",
+                "correct_answer",
+                "verify_corrected",
+                "respond",
+                "clarify"
+              ]
+            },
+            "type": "array",
+            "title": "Completed Nodes"
+          },
+          "retrieved_count": {
+            "type": "integer",
+            "title": "Retrieved Count"
+          },
+          "classified_intent": {
+            "type": "string",
+            "enum": [
+              "CODE_LOOKUP",
+              "CODE_EXPLANATION",
+              "DEPENDENCY_ANALYSIS",
+              "ARCHITECTURE_ANALYSIS",
+              "UNKNOWN"
+            ],
+            "title": "Classified Intent"
+          },
+          "selected_workflow": {
+            "type": "string",
+            "enum": [
+              "code_analysis",
+              "dependency_analysis",
+              "architecture_analysis",
+              "clarification"
+            ],
+            "title": "Selected Workflow"
+          },
+          "agents_executed": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "code_analysis",
+                "dependency_analysis",
+                "architecture_analysis"
+              ]
+            },
+            "type": "array",
+            "title": "Agents Executed"
+          },
+          "evidence_count": {
+            "type": "integer",
+            "title": "Evidence Count"
+          },
+          "execution_duration_ms": {
+            "type": "number",
+            "title": "Execution Duration Ms"
+          },
+          "classifier_version": {
+            "type": "string",
+            "title": "Classifier Version"
+          },
+          "routing_reason": {
+            "type": "string",
+            "title": "Routing Reason"
+          },
+          "classifier_prompt_versions": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PromptVersions"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "classifier_model_identifier": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Classifier Model Identifier"
+          },
+          "answer_status": {
+            "type": "string",
+            "enum": [
+              "ANSWERED",
+              "INSUFFICIENT_EVIDENCE",
+              "CLARIFICATION_REQUIRED"
+            ],
+            "title": "Answer Status"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "HIGH",
+              "MEDIUM",
+              "LOW",
+              "INSUFFICIENT"
+            ],
+            "title": "Confidence"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Limitations"
+          },
+          "excluded_evidence_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Excluded Evidence Ids"
+          },
+          "prompt_versions": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PromptVersions"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "model_identifier": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Identifier"
+          },
+          "verification_status": {
+            "type": "string",
+            "enum": [
+              "CITATION_VERIFIED",
+              "PARTIALLY_VERIFIED",
+              "INSUFFICIENT_EVIDENCE",
+              "NOT_APPLICABLE"
+            ],
+            "title": "Verification Status"
+          },
+          "correction_attempts": {
+            "type": "integer",
+            "title": "Correction Attempts"
+          }
+        },
+        "type": "object",
+        "required": [
+          "completed_nodes",
+          "retrieved_count",
+          "classified_intent",
+          "selected_workflow",
+          "agents_executed",
+          "evidence_count",
+          "execution_duration_ms",
+          "classifier_version",
+          "routing_reason",
+          "answer_status",
+          "confidence",
+          "limitations",
+          "excluded_evidence_ids",
+          "verification_status",
+          "correction_attempts"
+        ],
+        "title": "WorkflowMetadata"
+      },
+      "StreamEvent": {
+        "properties": {
+          "request_id": {
+            "format": "uuid",
+            "title": "Request Id",
+            "type": "string"
+          },
+          "event_type": {
+            "enum": [
+              "workflow_started",
+              "intent_classified",
+              "agent_started",
+              "agent_completed",
+              "evidence_verified",
+              "answer_completed",
+              "workflow_failed"
+            ],
+            "title": "Event Type",
+            "type": "string"
+          },
+          "sequence": {
+            "minimum": 1,
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "title": "Payload",
+            "type": "object"
+          }
+        },
+        "required": [
+          "request_id",
+          "event_type",
+          "sequence",
+          "timestamp",
+          "payload"
+        ],
+        "title": "StreamEvent",
+        "type": "object"
+      }
+    }
+  }
+}

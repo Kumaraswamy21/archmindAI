@@ -3,7 +3,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import CheckConstraint, Computed, DateTime, ForeignKey, Index, Integer, String, Text, func
+from sqlalchemy import CheckConstraint, Computed, DateTime, ForeignKey, Index, Integer, String, Text, func, text
 from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR, UUID as PGUUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from pgvector.sqlalchemy import VECTOR
@@ -20,6 +20,7 @@ class RepositoryRow(Base):
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     source_alias: Mapped[str] = mapped_column(String(100), nullable=False)
     status: Mapped[str] = mapped_column(String(32), nullable=False)
+    active_snapshot_id: Mapped[str | None] = mapped_column(String(64))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -34,6 +35,7 @@ class CodeChunkRow(Base):
         PGUUID(as_uuid=True), ForeignKey("repositories.id", ondelete="RESTRICT"),
         nullable=False,
     )
+    source_snapshot_id: Mapped[str | None] = mapped_column(String(64))
     file_path: Mapped[str] = mapped_column(Text, nullable=False)
     language: Mapped[str] = mapped_column(String(32), nullable=False)
     chunk_type: Mapped[str] = mapped_column(String(32), nullable=False)
@@ -124,6 +126,7 @@ class DependencyRelationshipRow(Base):
     repository_id: Mapped[UUID] = mapped_column(
         PGUUID(as_uuid=True), ForeignKey("repositories.id", ondelete="CASCADE"), nullable=False,
     )
+    source_snapshot_id: Mapped[str | None] = mapped_column(String(64))
     source_symbol: Mapped[str] = mapped_column(Text, nullable=False)
     target_symbol: Mapped[str] = mapped_column(Text, nullable=False)
     relationship_type: Mapped[str] = mapped_column(String(16), nullable=False)
@@ -146,3 +149,47 @@ class DependencyRelationshipRow(Base):
             name="ck_dependency_resolution_status",
         ),
     )
+
+
+class IndexJobRow(Base):
+    __tablename__ = "index_jobs"
+
+    job_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True)
+    repository_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("repositories.id", ondelete="CASCADE"), nullable=False
+    )
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    current_stage: Mapped[str | None] = mapped_column(String(32))
+    completed_stages: Mapped[list[str]] = mapped_column(JSONB, nullable=False)
+    source_snapshot_id: Mapped[str | None] = mapped_column(String(64))
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    lease_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    lease_token: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True))
+    embedding_model: Mapped[str | None] = mapped_column(String(200))
+    embedding_dimension: Mapped[int | None] = mapped_column(Integer)
+    error_code: Mapped[str | None] = mapped_column(String(64))
+    error_message: Mapped[str | None] = mapped_column(String(240))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    __table_args__ = (
+        Index("ix_index_jobs_repository_created", "repository_id", "created_at"),
+        Index("uq_index_jobs_active_repository", "repository_id", unique=True,
+              postgresql_where=text("status IN ('QUEUED', 'RUNNING')")),
+    )
+
+
+class IndexStagedChunkRow(Base):
+    __tablename__ = "index_staged_chunks"
+    job_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), ForeignKey("index_jobs.job_id", ondelete="CASCADE"), primary_key=True)
+    chunk_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    payload: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    input_hash: Mapped[str | None] = mapped_column(String(64))
+    embedding: Mapped[list[float] | None] = mapped_column(VECTOR())
+
+
+class IndexStagedEdgeRow(Base):
+    __tablename__ = "index_staged_edges"
+    job_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), ForeignKey("index_jobs.job_id", ondelete="CASCADE"), primary_key=True)
+    relationship_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    payload: Mapped[dict] = mapped_column(JSONB, nullable=False)

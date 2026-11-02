@@ -4,20 +4,51 @@ from uuid import UUID
 
 from fastapi import APIRouter, Query
 
-from app.errors import ErrorResponse
+from app.errors import ApplicationError, ErrorResponse
 from app.modules.repository_ingestion.schemas import (
     RepositoryRegistrationRequest,
     RepositoryRegistrationResponse,
+    RepositoryListResponse,
+    ApprovedAliasesResponse,
     RepositoryFilesResponse,
     RepositoryFileContentResponse,
     RepositoryScanResponse,
-    RequestValidationErrorResponse,
 )
 from app.modules.repository_ingestion.service import RepositoryService
 
 
 def create_router(service: RepositoryService) -> APIRouter:
     router = APIRouter(prefix="/api/v1/repositories", tags=["repositories"])
+
+    def project_response(record) -> RepositoryRegistrationResponse:
+        return RepositoryRegistrationResponse(
+            repository_id=record.repository_id, name=record.name,
+            source_alias=record.source_alias, status=record.status,
+            registered_at=record.registered_at,
+        )
+
+    @router.get("", response_model=RepositoryListResponse,
+                responses={503: {"model": ErrorResponse}},
+                summary="List registered projects with pagination")
+    def list_repositories(limit: int = Query(50, ge=1, le=100),
+                          offset: int = Query(0, ge=0)) -> RepositoryListResponse:
+        total, records = service.list_projects(limit, offset)
+        return RepositoryListResponse(total=total, limit=limit, offset=offset,
+                                      repositories=[project_response(r) for r in records])
+
+    @router.get("/approved-aliases", response_model=ApprovedAliasesResponse,
+                summary="List server-approved repository aliases")
+    def approved_aliases() -> ApprovedAliasesResponse:
+        return ApprovedAliasesResponse(aliases=service.approved_aliases())
+
+    @router.get("/{repository_id}", response_model=RepositoryRegistrationResponse,
+                responses={404: {"model": ErrorResponse}, 503: {"model": ErrorResponse}},
+                summary="Get persisted project metadata")
+    def get_repository(repository_id: UUID) -> RepositoryRegistrationResponse:
+        record = service.project(repository_id)
+        if record is None:
+            raise ApplicationError(404, "REPOSITORY_NOT_FOUND", "Repository not found.")
+        return project_response(record)
 
     @router.post(
         "",
@@ -74,11 +105,7 @@ def create_router(service: RepositoryService) -> APIRouter:
         request: RepositoryRegistrationRequest,
     ) -> RepositoryRegistrationResponse:
         record = service.register(request)
-        return RepositoryRegistrationResponse(
-            repository_id=record.repository_id,
-            name=record.name,
-            status=record.status,
-        )
+        return project_response(record)
 
     @router.get(
         "/{repository_id}/files",
@@ -136,6 +163,7 @@ def create_router(service: RepositoryService) -> APIRouter:
     @router.get(
         "/{repository_id}/files/content",
         response_model=RepositoryFileContentResponse,
+        response_model_exclude_none=True,
         summary="Read a source file",
         description="Read a supported UTF-8 source file using a repository-relative path.",
         responses={
@@ -174,8 +202,11 @@ def create_router(service: RepositoryService) -> APIRouter:
             413: _error_documentation(
                 "SOURCE_FILE_TOO_LARGE", "Source file exceeds the size limit."
             ),
+            416: _error_documentation(
+                "SOURCE_LINE_RANGE_INVALID", "Requested source lines are unavailable."
+            ),
             422: {
-                "model": ErrorResponse | RequestValidationErrorResponse,
+                "model": ErrorResponse,
                 "description": "Invalid UTF-8 or invalid request parameters.",
                 "content": {
                     "application/json": {
@@ -206,8 +237,10 @@ def create_router(service: RepositoryService) -> APIRouter:
             ..., description="Repository-relative source file path.",
             examples=["src/main/java/OrderService.java"],
         ),
+        start_line: int | None = Query(None, ge=1, description="First cited source line, inclusive."),
+        end_line: int | None = Query(None, ge=1, description="Last cited source line, inclusive."),
     ) -> RepositoryFileContentResponse:
-        return service.read_file(repository_id, path)
+        return service.read_file(repository_id, path, start_line, end_line)
 
     @router.post(
         "/{repository_id}/scan",

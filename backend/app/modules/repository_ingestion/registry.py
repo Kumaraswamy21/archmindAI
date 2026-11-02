@@ -31,6 +31,11 @@ class RepositoryRegistry:
         with self._lock:
             return self._records.get(repository_id)
 
+    def list(self, limit: int, offset: int) -> tuple[int, list[RepositoryRecord]]:
+        with self._lock:
+            records = sorted(self._records.values(), key=lambda r: (r.registered_at, r.repository_id))
+            return len(records), records[offset:offset + limit]
+
     def register(self, name: str, source_alias: str, root_path: Path) -> RepositoryRecord:
         with self._lock:
             if name in self._names or source_alias in self._aliases:

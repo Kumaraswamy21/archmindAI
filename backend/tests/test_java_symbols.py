@@ -277,7 +277,7 @@ def test_symbols_openapi_schema_and_errors(
         assert operation["responses"][status]["content"]["application/json"]["schema"] == {
             "$ref": "#/components/schemas/ErrorResponse"
         }
-    assert {"$ref": "#/components/schemas/ErrorResponse"} in operation["responses"]["422"]["content"]["application/json"]["schema"]["anyOf"]
+    assert operation["responses"]["422"]["content"]["application/json"]["schema"] == {"$ref": "#/components/schemas/ErrorResponse"}
     components = schema["components"]["schemas"]
     assert set(components["JavaSymbolsResponse"]["required"]) == {
         "file_path", "package", "imports", "symbols"

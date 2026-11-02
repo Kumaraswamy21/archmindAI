@@ -2,6 +2,12 @@
 
 ArchMind AI is a read-only repository intelligence and architecture analysis platform.
 
+The Phase 6.6.1 backend exposes [frontend project contracts](docs/api/frontend-contract.md):
+paginated repository listing, persisted project metadata, approved alias discovery,
+registration with independent display names, a shared error envelope, and explicit CORS origins.
+With `DATABASE_URL` configured and migrations applied, project IDs survive backend restarts.
+Phase 6.6.2 adds [durable project indexing jobs](docs/modules/project-onboarding.md). Start the separate backend worker to process queued jobs; the API returns immediately and exposes job progress.
+
 - [Backend setup and API usage](backend/README.md)
 - [Runtime LLM prompt versioning standard](docs/prompt-management.md)
 - [Prompt changelog](docs/prompt-changelog.md)

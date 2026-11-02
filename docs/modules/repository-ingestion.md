@@ -1,6 +1,6 @@
 # Repository ingestion: registration, discovery, reading, and scanning
 
-Phase 2.1 registers administrator-approved local repository directories. Phase 2.2 discovers source-file metadata within registered directories. Phase 2.3 reads individual supported source files as UTF-8. Phase 2.4 summarizes discoverable file metadata. It does not ingest content or call an LLM. The feature lives in `backend/app/modules/repository_ingestion/`: the router handles HTTP, schemas define the public contract, the service applies rules, the registry stores process-local records, security checks configured paths, discovery traverses files, and reading opens individual files safely.
+Phase 2.1 registers administrator-approved local repository directories. Phase 2.2 discovers source-file metadata within registered directories. Phase 2.3 reads individual supported source files as UTF-8. Phase 2.4 summarizes discoverable file metadata. It does not ingest content or call an LLM. The feature lives in `backend/app/modules/repository_ingestion/`: the router handles HTTP, schemas define the public contract, the service applies rules, security checks configured paths, discovery traverses files, and reading opens individual files safely. The registry stores process-local records without a database; the project store persists metadata when managed PostgreSQL is configured.
 
 ## Administrator configuration
 
@@ -25,15 +25,15 @@ Optional `ARCHMIND_DISCOVERY_MAX_FILES` and `ARCHMIND_DISCOVERY_MAX_FILE_SIZE_BY
 {"name":"ecommerce-service","source_alias":"sample-ecommerce"}
 ```
 
-Names and aliases must be 1–100 characters and contain letters, digits, `.`, `_`, or `-`, beginning with a letter or digit. Extra fields, including a client-supplied path, are rejected with FastAPI's standard HTTP 422 response.
+Display names are trimmed printable text of 1–100 characters and may contain spaces. Aliases must be 1–100 characters and contain letters, digits, `.`, `_`, or `-`, beginning with a letter or digit. Extra fields, including a client-supplied path, receive the shared `VALIDATION_ERROR` HTTP 422 envelope.
 
-On success, HTTP 201 returns a generated UUID, the requested name, and the status:
+On success, HTTP 201 returns project metadata:
 
 ```json
-{"repository_id":"<uuid>","name":"ecommerce-service","status":"REGISTERED"}
+{"repository_id":"<uuid>","name":"ecommerce-service","source_alias":"sample-ecommerce","status":"REGISTERED","registered_at":"2026-10-31T12:00:00Z"}
 ```
 
-The following application errors use the shared `{"error":{"code":"...","message":"..."}}` envelope:
+The following application errors use the shared envelope with `code`, `message`, `request_id`, and `details` under `error`:
 
 | HTTP | Code | Meaning |
 | --- | --- | --- |
@@ -41,7 +41,7 @@ The following application errors use the shared `{"error":{"code":"...","message
 | 409 | `REPOSITORY_ALREADY_REGISTERED` | The name or alias is already registered. |
 | 503 | `REPOSITORY_SOURCE_UNAVAILABLE` | The configured source or approved root is invalid or unavailable. |
 
-The registry keeps the UUID, name, source alias, resolved root path, `REGISTERED` status, and UTC registration time internally. The API never returns the path or timestamp. Records are in memory: they disappear on restart and are not shared across workers. Registration does not verify that a directory is a Git repository. Authentication and persistent storage are outside Phase 2.1.
+With managed PostgreSQL configured, registration immediately stores UUID, display name, alias, status, and UTC registration time. The approved filesystem path stays in server configuration and is never returned. The API returns the timestamp as project metadata. A backend restart reloads the same project UUID through its configured alias. Without a database, the original process-local registry remains available. Registration does not verify that a directory is a Git repository. Authentication is not part of this phase.
 
 ## File discovery API
 
@@ -68,7 +68,7 @@ An eligible file larger than the per-file limit or an eligible file count above 
 | 413 | `DISCOVERY_LIMIT_EXCEEDED` | File-count or file-size limit exceeded. |
 | 503 | `REPOSITORY_UNAVAILABLE` | The registered root or traversal is unavailable. |
 
-An invalid UUID receives FastAPI's standard HTTP 422 response. Empty repositories return HTTP 200 with an empty `files` array. This endpoint does not read source contents, persist scan results, or follow references outside the registered repository.
+An invalid UUID receives the shared HTTP 422 `VALIDATION_ERROR` envelope. Empty repositories return HTTP 200 with an empty `files` array. This endpoint does not read source contents, persist scan results, or follow references outside the registered repository.
 
 ## Source content API
 
@@ -99,7 +99,7 @@ Errors use the shared application envelope without filesystem paths:
 | 422 | `FILE_ENCODING_INVALID` | The file bytes are not valid UTF-8. |
 | 503 | `REPOSITORY_UNAVAILABLE` | The root or read operation is unavailable. |
 
-Missing query parameters and invalid UUIDs also return FastAPI's standard HTTP 422 validation envelope with a `detail` list. OpenAPI documents both 422 shapes.
+Missing query parameters and invalid UUIDs also return the shared HTTP 422 `VALIDATION_ERROR` envelope with structured `details`. OpenAPI documents this shape.
 
 ## Repository scan API
 
@@ -119,4 +119,4 @@ Missing query parameters and invalid UUIDs also return FastAPI's standard HTTP 4
 
 `total_files` is the number of discovered supported files. `total_size_bytes` is the sum of their metadata sizes. The `languages` object always contains `java`, `python`, and `typescript`, including zero counts for absent languages. An empty repository returns zero for every count and byte total. Each request recomputes the summary, so repeated scans can reflect file changes.
 
-The scan inherits discovery's directory exclusions, symlink handling, file-count limit, and per-file size limit. It uses the shared application error envelope: HTTP 404 `REPOSITORY_NOT_FOUND`, HTTP 413 `DISCOVERY_LIMIT_EXCEEDED`, and HTTP 503 `REPOSITORY_UNAVAILABLE`. An invalid UUID receives FastAPI's standard HTTP 422 response. Synchronous scanning is appropriate for the configured small-repository limits; there is no background worker, scan history, or persistent result storage.
+The scan inherits discovery's directory exclusions, symlink handling, file-count limit, and per-file size limit. It uses the shared application error envelope: HTTP 404 `REPOSITORY_NOT_FOUND`, HTTP 413 `DISCOVERY_LIMIT_EXCEEDED`, and HTTP 503 `REPOSITORY_UNAVAILABLE`. An invalid UUID receives the shared HTTP 422 `VALIDATION_ERROR` envelope. Synchronous scanning is appropriate for the configured small-repository limits; there is no background worker, scan history, or persistent result storage.

@@ -17,7 +17,6 @@ from app.modules.code_intelligence.schemas import (
     JavaSymbolsResponse,
 )
 from app.modules.code_intelligence.service import CodeIntelligenceService
-from app.modules.repository_ingestion.schemas import RequestValidationErrorResponse
 
 
 def create_router(service: CodeIntelligenceService) -> APIRouter:
@@ -88,7 +87,7 @@ def create_router(service: CodeIntelligenceService) -> APIRouter:
                 "SOURCE_FILE_TOO_LARGE", "Source file exceeds the size limit."
             ),
             422: {
-                "model": ErrorResponse | RequestValidationErrorResponse,
+                "model": ErrorResponse,
                 "description": "Invalid UTF-8 or invalid request parameters.",
                 "content": {
                     "application/json": {
@@ -135,7 +134,7 @@ def create_router(service: CodeIntelligenceService) -> APIRouter:
                 "SOURCE_FILE_TOO_LARGE", "Source file exceeds the size limit."
             ),
             422: {
-                "model": ErrorResponse | RequestValidationErrorResponse,
+                "model": ErrorResponse,
                 "description": "Invalid UTF-8 or invalid request parameters.",
             },
             503: _error_documentation(
@@ -164,7 +163,7 @@ def create_router(service: CodeIntelligenceService) -> APIRouter:
             404: {"model": ErrorResponse, "description": "Repository or source file not found."},
             413: _error_documentation("SOURCE_FILE_TOO_LARGE", "Source file exceeds the size limit."),
             422: {
-                "model": ErrorResponse | RequestValidationErrorResponse,
+                "model": ErrorResponse,
                 "description": "Invalid UTF-8 or invalid request parameters.",
             },
             503: _error_documentation("REPOSITORY_UNAVAILABLE", "Registered repository is unavailable."),
@@ -185,7 +184,7 @@ def create_router(service: CodeIntelligenceService) -> APIRouter:
             403: _error_documentation("INVALID_SOURCE_PATH", "Source file path is not permitted."),
             404: {"model": ErrorResponse, "description": "Repository or source file not found."},
             413: _error_documentation("SOURCE_FILE_TOO_LARGE", "Source file exceeds the size limit."),
-            422: {"model": ErrorResponse | RequestValidationErrorResponse, "description": "Invalid UTF-8 or request parameters."},
+            422: {"model": ErrorResponse, "description": "Invalid UTF-8 or request parameters."},
             503: {
                 "model": ErrorResponse,
                 "description": "Cloud database or repository source is unavailable.",

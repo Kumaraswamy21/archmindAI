@@ -10,3 +10,11 @@
 __pycache__/
 .pytest_cache/
 *.egg-info/
+
+# Next.js frontend build artifacts.
+frontend/node_modules/
+frontend/.next/
+frontend/coverage/
+frontend/tsconfig.tsbuildinfo
+frontend/test-results/
+frontend/playwright-report/

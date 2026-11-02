@@ -1,5 +1,7 @@
 """Read-only source-file content API and path security tests."""
 
+from contract_helpers import legacy_error
+
 import json
 from pathlib import Path
 from uuid import uuid4
@@ -83,7 +85,7 @@ def test_missing_file_returns_404(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
     response = read_file(client, repository_id, "missing.py")
 
     assert response.status_code == 404
-    assert response.json() == {
+    assert legacy_error(response) == {
         "error": {"code": "SOURCE_FILE_NOT_FOUND", "message": "Source file not found."}
     }
 
@@ -96,7 +98,7 @@ def test_unknown_repository_returns_404(
     response = read_file(client, str(uuid4()), "source.py")
 
     assert response.status_code == 404
-    assert response.json() == {
+    assert legacy_error(response) == {
         "error": {"code": "REPOSITORY_NOT_FOUND", "message": "Repository not found."}
     }
 
@@ -114,7 +116,7 @@ def test_invalid_or_escaping_path_returns_403(
     response = read_file(client, repository_id, path)
 
     assert response.status_code == 403
-    assert response.json() == {
+    assert legacy_error(response) == {
         "error": {
             "code": "INVALID_SOURCE_PATH",
             "message": "Source file path is not permitted.",
@@ -162,7 +164,7 @@ def test_unsupported_extension_returns_400(
     response = read_file(client, repository_id, "notes.txt")
 
     assert response.status_code == 400
-    assert response.json() == {
+    assert legacy_error(response) == {
         "error": {
             "code": "UNSUPPORTED_SOURCE_FILE",
             "message": "Unsupported source file type.",
@@ -181,7 +183,7 @@ def test_oversized_file_returns_413(
     response = read_file(client, repository_id, "large.py")
 
     assert response.status_code == 413
-    assert response.json() == {
+    assert legacy_error(response) == {
         "error": {
             "code": "SOURCE_FILE_TOO_LARGE",
             "message": "Source file exceeds the size limit.",
@@ -198,7 +200,7 @@ def test_invalid_utf8_returns_controlled_422(
     response = read_file(client, repository_id, "invalid.py")
 
     assert response.status_code == 422
-    assert response.json() == {
+    assert legacy_error(response) == {
         "error": {
             "code": "FILE_ENCODING_INVALID",
             "message": "Source file is not valid UTF-8.",
@@ -232,7 +234,7 @@ def test_missing_query_parameter_uses_fastapi_validation_response(
     response = client.get(f"/api/v1/repositories/{repository_id}/files/content")
 
     assert response.status_code == 422
-    assert isinstance(response.json()["detail"], list)
+    assert isinstance(response.json()["error"]["details"], list)
 
 
 def test_content_openapi_schemas_and_errors(
@@ -252,10 +254,9 @@ def test_content_openapi_schemas_and_errors(
         assert operation["responses"][status]["content"]["application/json"]["schema"] == {
             "$ref": "#/components/schemas/ErrorResponse"
         }
-    assert {"$ref": "#/components/schemas/ErrorResponse"} in operation["responses"]["422"]["content"]["application/json"]["schema"]["anyOf"]
-    assert {"$ref": "#/components/schemas/RequestValidationErrorResponse"} in operation["responses"]["422"]["content"]["application/json"]["schema"]["anyOf"]
+    assert operation["responses"]["422"]["content"]["application/json"]["schema"] == {"$ref": "#/components/schemas/ErrorResponse"}
     assert {parameter["name"] for parameter in operation["parameters"]} == {
-        "repository_id", "path"
+        "repository_id", "path", "start_line", "end_line"
     }
     response_schema = schema["components"]["schemas"]["RepositoryFileContentResponse"]
     assert set(response_schema["required"]) == {

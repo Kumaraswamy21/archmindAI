@@ -37,6 +37,7 @@ class CodeAnalysisAgent:
                 start_line=item.source.start_line,
                 end_line=item.source.end_line,
                 kind="source_code", content=item.source.content,
+                qualified_symbol=item.source.qualified_name,
             )
             for item in context.evidence
         }
@@ -60,6 +61,7 @@ class CodeAnalysisAgent:
                 file_path=source.file_path, start_line=source.start_line,
                 end_line=source.end_line, kind="source_code",
                 content=f"Symbol: {source.qualified_name}\n{source.content}",
+                qualified_symbol=source.qualified_name,
             )
             for item in ranked.results
             for source in [sources[item.chunk_id]]

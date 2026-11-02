@@ -1,13 +1,21 @@
 """FastAPI application entry point."""
 
 import os
+import json
 from importlib.util import find_spec
+from urllib.parse import urlsplit
+from uuid import uuid4
 
 from fastapi import FastAPI
+from fastapi import Request
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.utils import get_openapi
 
 from app.api.health import router as health_router
 from app.api.questions import router as questions_router
-from app.errors import ApplicationError, handle_application_error
+from app.errors import ApplicationError, handle_application_error, handle_validation_error, handle_http_error, handle_unexpected_error
 from app.db.config import DatabaseSettings
 from app.db.session import create_database_engine, create_session_factory
 from app.modules.code_intelligence.java_parser import JavaParserAdapter
@@ -15,6 +23,9 @@ from app.modules.code_intelligence.persistence import ChunkPersistence
 from app.modules.code_intelligence.router import create_router as create_parse_router
 from app.modules.code_intelligence.service import CodeIntelligenceService
 from app.modules.repository_ingestion.registry import RepositoryRegistry
+from app.modules.repository_ingestion.persistence import ProjectStore
+from app.modules.project_indexing.persistence import IndexJobStore
+from app.modules.project_indexing.router import create_router as create_index_job_router
 from app.modules.repository_ingestion.router import create_router as create_repository_router
 from app.modules.repository_ingestion.security import RepositoryConfiguration
 from app.modules.repository_ingestion.service import RepositoryService
@@ -35,6 +46,9 @@ from app.modules.rag.persistence import RagEvidenceStore
 from app.modules.rag.router import create_router as create_rag_router
 from app.modules.rag.service import RagService
 from app.modules.agentic.router import create_router as create_agentic_router
+from app.modules.chat.router import create_router as create_chat_router
+from app.modules.chat.service import ChatService
+from app.modules.chat.streaming import StreamEvent
 from app.modules.agentic.workflow import AgenticWorkflow
 from app.modules.agentic.classifier import IntentClassifier
 from app.modules.agentic.code_analysis import CodeAnalysisAgent
@@ -67,12 +81,35 @@ def create_app() -> FastAPI:
     )
 
     app.add_exception_handler(ApplicationError, handle_application_error)
+    app.add_exception_handler(RequestValidationError, handle_validation_error)
+    app.add_exception_handler(HTTPException, handle_http_error)
+    app.add_exception_handler(Exception, handle_unexpected_error)
+
+    origins = json.loads(os.environ.get("ARCHMIND_FRONTEND_ORIGINS", "[]"))
+    if not isinstance(origins, list) or any(not isinstance(origin, str) for origin in origins):
+        raise ValueError("ARCHMIND_FRONTEND_ORIGINS must be a JSON list of origins.")
+    for origin in origins:
+        parsed = urlsplit(origin)
+        if (parsed.scheme not in {"http", "https"} or not parsed.netloc
+                or parsed.path or parsed.query or parsed.fragment or "*" in origin):
+            raise ValueError("ARCHMIND_FRONTEND_ORIGINS contains an invalid origin.")
+    app.add_middleware(CORSMiddleware, allow_origins=origins,
+                       allow_methods=["GET", "POST", "OPTIONS"],
+                       allow_headers=["Content-Type", "X-Request-ID"])
+
+    @app.middleware("http")
+    async def request_identity(request: Request, call_next):
+        request.state.request_id = str(uuid4())
+        response = await call_next(request)
+        response.headers["X-Request-ID"] = request.state.request_id
+        return response
     app.include_router(health_router)
     app.include_router(questions_router)
 
     service = RepositoryService(
         RepositoryConfiguration.from_environment(), RepositoryRegistry()
     )
+    app.state.repository_service = service
     app.include_router(create_repository_router(service))
     persistence = None
     embedding_service = None
@@ -85,11 +122,15 @@ def create_app() -> FastAPI:
     agentic_service = None
     evaluation_service = None
     dependency_service = None
+    index_job_store = None
     if os.environ.get("DATABASE_URL"):
         settings = DatabaseSettings()
         engine = create_database_engine(settings, register_vectors=True)
         app.state.db_engine = engine
         session_factory = create_session_factory(engine)
+        service.attach_store(ProjectStore(session_factory))
+        index_job_store = IndexJobStore(session_factory)
+        app.state.index_job_store = index_job_store
         persistence = ChunkPersistence(session_factory)
         dependency_service = DependencyIntelligenceService(
             service, DependencyPersistence(session_factory)
@@ -181,8 +222,41 @@ def create_app() -> FastAPI:
     app.include_router(create_rerank_router(rerank_service))
     app.include_router(create_rag_router(rag_service))
     app.include_router(create_agentic_router(agentic_service))
+    app.include_router(create_chat_router(ChatService(agentic_service) if agentic_service else None))
     app.include_router(create_evaluation_router(evaluation_service))
     app.include_router(create_dependency_router(dependency_service))
+    app.include_router(create_index_job_router(index_job_store, service))
+
+    def openapi_schema():
+        if app.openapi_schema is None:
+            schema = get_openapi(title=app.title, version=app.version,
+                                 description=app.description, routes=app.routes)
+            for path in schema["paths"].values():
+                for operation in path.values():
+                    if "responses" in operation and "422" in operation["responses"]:
+                        operation["responses"]["422"] = {
+                            "description": "Request validation failed.",
+                            "content": {"application/json": {"schema": {
+                                "$ref": "#/components/schemas/ErrorResponse"
+                            }}},
+                        }
+            def complete_error_examples(value):
+                if isinstance(value, dict):
+                    error = value.get("error")
+                    if isinstance(error, dict) and "code" in error and "message" in error:
+                        error.setdefault("request_id", "00000000-0000-4000-8000-000000000000")
+                        error.setdefault("details", None)
+                    for child in value.values():
+                        complete_error_examples(child)
+                elif isinstance(value, list):
+                    for child in value:
+                        complete_error_examples(child)
+            complete_error_examples(schema["paths"])
+            schema["components"]["schemas"]["StreamEvent"] = StreamEvent.model_json_schema()
+            app.openapi_schema = schema
+        return app.openapi_schema
+
+    app.openapi = openapi_schema
     return app
 
 

@@ -28,6 +28,7 @@ class AgentEvidence:
     end_line: int
     kind: str
     content: str
+    qualified_symbol: str | None = None
 
 
 @dataclass(frozen=True)

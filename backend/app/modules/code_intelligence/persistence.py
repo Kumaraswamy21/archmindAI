@@ -7,7 +7,8 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.db.models import CodeChunkRow, RepositoryRow
+from app.db.models import CodeChunkRow, IndexJobRow, RepositoryRow
+from app.errors import ApplicationError
 from app.modules.code_intelligence.chunking.schemas import JavaChunk
 from app.modules.repository_ingestion.registry import RepositoryRecord
 
@@ -22,6 +23,15 @@ class ChunkPersistence:
         """Upsert the repository and replace one file's stale chunks atomically."""
         ids = [chunk.chunk_id for chunk in chunks]
         with self._session_factory.begin() as session:
+            project = session.get(RepositoryRow, repository.repository_id, with_for_update=True)
+            if isinstance(project, RepositoryRow):
+                active_job = session.scalar(select(IndexJobRow.job_id).where(
+                    IndexJobRow.repository_id == repository.repository_id,
+                    IndexJobRow.status.in_(["QUEUED", "RUNNING"]),
+                ).limit(1))
+                if project.active_snapshot_id is not None or active_job is not None:
+                    raise ApplicationError(409, "MANAGED_INDEX_REQUIRED",
+                                           "Use the managed repository indexing job.")
             session.execute(
                 insert(RepositoryRow).values(
                     id=repository.repository_id,

@@ -2,13 +2,15 @@
 
 from time import perf_counter
 from dataclasses import replace
+from threading import Event
 from typing import Callable
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from app.errors import ApplicationError
 from app.modules.agentic.architecture_analysis import ArchitectureAnalysisAgent
 from app.modules.agentic.classifier import IntentClassifier
 from app.modules.agentic.code_analysis import CodeAnalysisAgent
+from app.modules.agentic.analysis_common import AgentEvidence
 from app.modules.agentic.dependency_analysis import DependencyAnalysisAgent
 from app.modules.agentic.schemas import AnalyzeRequest, AnalyzeResponse, WorkflowMetadata
 from app.modules.agentic.evidence_verification import (
@@ -16,6 +18,10 @@ from app.modules.agentic.evidence_verification import (
 )
 from app.modules.agentic.state import WorkflowState
 from app.modules.repository_ingestion.service import RepositoryService
+
+
+class WorkflowCancelled(Exception):
+    """The streaming client disconnected or cancelled its request."""
 
 
 class AgenticWorkflow:
@@ -96,19 +102,31 @@ class AgenticWorkflow:
         return str(state["workflow_metadata"]["selected_workflow"])
 
     def _code_analysis(self, state: WorkflowState) -> dict[str, object]:
+        self._notify_start(state, "code_analysis")
         result = self._code.answer(state["repository_id"], state["question"], state["top_k"])
         return self._agent_update(state, result, "code_analysis", ["code_analysis"])
 
     def _dependency_analysis(self, state: WorkflowState) -> dict[str, object]:
+        self._notify_start(state, "dependency_analysis")
         result = self._dependency.answer(state["repository_id"], state["question"])
         return self._agent_update(state, result, "dependency_analysis", ["dependency_analysis"])
 
     def _architecture_analysis(self, state: WorkflowState) -> dict[str, object]:
+        self._notify_start(state, "architecture_analysis")
         result = self._architecture.answer(state["repository_id"], state["question"], state["top_k"])
         return self._agent_update(
             state, result, "architecture_analysis",
             ["code_analysis", "dependency_analysis", "architecture_analysis"],
         )
+
+    @staticmethod
+    def _notify_start(state: WorkflowState, agent: str) -> None:
+        cancelled = state.get("cancel_event")
+        if cancelled is not None and cancelled.is_set():
+            raise WorkflowCancelled()
+        sink = state.get("progress_sink")
+        if sink is not None:
+            sink("agent_started", {"agent": agent})
 
     @staticmethod
     def _agent_update(state, result, node, executed):
@@ -259,24 +277,81 @@ class AgenticWorkflow:
         return {"answer": answer, "citations": citations, "workflow_metadata": metadata}
 
     def analyze(self, request: AnalyzeRequest) -> AnalyzeResponse:
+        response, _ = self.analyze_with_evidence(request)
+        return response
+
+    def analyze_with_evidence(
+        self, request: AnalyzeRequest, *, request_id: UUID | None = None,
+    ) -> tuple[AnalyzeResponse, dict[str, AgentEvidence]]:
+        """Run the same graph and return its request-local evidence to trusted adapters."""
         started = self._clock()
-        initial: WorkflowState = {
-            "request_id": uuid4(), "repository_id": request.repository_id,
+        initial = self._initial_state(request, request_id=request_id)
+        result: WorkflowState = self._graph.invoke(initial, config={"recursion_limit": 10})
+        return self._response_from_state(result, started)
+
+    def stream_with_evidence(
+        self, request: AnalyzeRequest, *, request_id: UUID,
+        emit: Callable[[str, dict[str, object]], None],
+        cancel_event: Event,
+    ) -> tuple[AnalyzeResponse, dict[str, AgentEvidence]]:
+        """Run the same graph once and emit sanitized, actual node transitions."""
+        started = self._clock()
+        state = self._initial_state(
+            request, request_id=request_id,
+            progress_sink=emit, cancel_event=cancel_event,
+        )
+        for update in self._graph.stream(state, stream_mode="updates", config={"recursion_limit": 10}):
+            if cancel_event.is_set():
+                raise WorkflowCancelled()
+            for node, values in update.items():
+                state.update(values)
+                if node == "classify_intent":
+                    metadata = state["workflow_metadata"]
+                    emit("intent_classified", {
+                        "intent": metadata["classified_intent"],
+                        "selected_workflow": metadata["selected_workflow"],
+                    })
+                elif node in {"code_analysis", "dependency_analysis", "architecture_analysis"}:
+                    emit("agent_completed", {
+                        "agent": node,
+                        "evidence_count": state["workflow_metadata"]["evidence_count"],
+                    })
+                elif node in {"evidence_verification", "verify_corrected"}:
+                    emit("evidence_verified", {
+                        "verification_status": state["workflow_metadata"]["verification_status"],
+                        "correction_pass": node == "verify_corrected",
+                    })
+        if cancel_event.is_set():
+            raise WorkflowCancelled()
+        return self._response_from_state(state, started)
+
+    @staticmethod
+    def _initial_state(
+        request: AnalyzeRequest, *, request_id: UUID | None = None,
+        progress_sink: Callable[[str, dict[str, object]], None] | None = None,
+        cancel_event: Event | None = None,
+    ) -> WorkflowState:
+        return {
+            "request_id": request_id or uuid4(), "repository_id": request.repository_id,
             "question": request.question, "top_k": request.top_k,
             "intent_decision": None, "retrieved_evidence": None,
             "analysis": None, "answer": None, "citations": [], "errors": [],
             "evidence": {}, "verification": None, "unsupported_claims": [],
             "claim_verifications": [], "correction_attempts": 0,
             "workflow_metadata": {"completed_nodes": [], "retrieved_count": 0},
+            "progress_sink": progress_sink, "cancel_event": cancel_event,
         }
-        result: WorkflowState = self._graph.invoke(initial, config={"recursion_limit": 10})
+
+    def _response_from_state(
+        self, result: WorkflowState, started: float,
+    ) -> tuple[AnalyzeResponse, dict[str, AgentEvidence]]:
         if result["answer"] is None:
             raise ApplicationError(503, "ANALYSIS_UNAVAILABLE", "Repository analysis is unavailable.")
         metadata = {
             **result["workflow_metadata"],
             "execution_duration_ms": max(0.0, (self._clock() - started) * 1000.0),
         }
-        return AnalyzeResponse(
+        response = AnalyzeResponse(
             request_id=result["request_id"], repository_id=result["repository_id"],
             answer=result["answer"], citations=result["citations"],
             verification_status=metadata["verification_status"],
@@ -286,3 +361,4 @@ class AgenticWorkflow:
             prompt_versions=metadata.get("prompt_versions"),
             workflow_metadata=WorkflowMetadata.model_validate(metadata),
         )
+        return response, result["evidence"]

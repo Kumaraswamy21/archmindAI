@@ -1,5 +1,7 @@
 """Smoke tests for the API documentation endpoints."""
 
+from contract_helpers import legacy_error
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -88,8 +90,8 @@ def test_invalid_question_returns_422(payload: dict[str, str]) -> None:
     response = client.post("/api/v1/questions/validate", json=payload)
 
     assert response.status_code == 422
-    assert isinstance(response.json()["detail"], list)
-    assert "error" not in response.json()
+    assert isinstance(response.json()["error"]["details"], list)
+    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
 
 
 def test_question_validation_openapi_schema_and_examples() -> None:
@@ -141,7 +143,7 @@ def test_unknown_question_example_returns_standard_error() -> None:
     response = client.get("/api/v1/questions/examples/unknown")
 
     assert response.status_code == 404
-    assert response.json() == {
+    assert legacy_error(response) == {
         "error": {
             "code": "EXAMPLE_NOT_FOUND",
             "message": "Question example not found.",
@@ -172,5 +174,5 @@ def test_all_routes_and_example_responses_are_documented() -> None:
     assert components["ErrorResponse"]["properties"]["error"] == {
         "$ref": "#/components/schemas/ErrorDetail"
     }
-    assert set(components["ErrorDetail"]["required"]) == {"code", "message"}
-    assert set(components["ErrorDetail"]["properties"]) == {"code", "message"}
+    assert set(components["ErrorDetail"]["required"]) == {"code", "message", "request_id"}
+    assert set(components["ErrorDetail"]["properties"]) == {"code", "message", "request_id", "details"}

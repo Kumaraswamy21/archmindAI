@@ -37,7 +37,7 @@ The API does not create tables or run migrations on startup. Missing `DATABASE_U
 
 Each index request opens a SQLAlchemy session and one transaction. It inserts the repository metadata if absent, removes stale chunks for that file, and inserts current chunks with PostgreSQL `ON CONFLICT DO NOTHING`. Repeating an index of unchanged content preserves the same rows and IDs. Indexing an edited file replaces the old file's chunks atomically. The session closes after each operation. The engine uses SSL, a five-connection pool with at most two overflow connections per process, a five-second pool wait and connection timeout, and pre-ping for stale connections.
 
-Repository registration remains process-local. A repository row is written when its first file is indexed. After a backend restart, indexed chunks remain readable by the original repository UUID because they are in PostgreSQL. The old UUID is not restored into the in-memory source registry, so source discovery, preview, and further indexing require a new registration. Re-registering creates a new UUID; migrating registration identity across restarts is outside Phase 4.1.
+Since Phase 6.6.1, registration writes a repository row immediately when managed PostgreSQL is configured. The same UUID can be listed and used for source operations after restart as long as its alias remains approved and available. No absolute source root is stored. Without database configuration, the earlier process-local registry remains available.
 
 ## API
 
@@ -62,7 +62,7 @@ HTTP 200 returns `repository_id`, `total_chunks`, `limit`, `offset`, and `chunks
 
 Unit tests use mocks and SQL compilation without cloud access. The opt-in remote integration test runs only when `ARCHMIND_RUN_REMOTE_DB_TESTS=1` and `ARCHMIND_TEST_DATABASE_URL` names a separate remote database beginning with `test_` or ending with `_test`. Apply the migration to that isolated database explicitly before running the test. Never point it at production. The test verifies committed reads through a new engine, idempotence, and foreign-key enforcement, then removes only its own rows.
 
-Phase 4.1 stores chunk text and metadata only. It does not track source changes automatically or restore source-registration state after restart. Reindex a file after it changes; stale chunks for that file are replaced then. Phase 4.2 adds embedding generation and metadata as described below.
+Phase 4.1 stores chunk text and metadata only. It does not track source changes automatically. Reindex a file after it changes; stale chunks for that file are replaced then. Phase 4.2 adds embedding generation and metadata as described below.
 
 ## Gemini embedding generation
 

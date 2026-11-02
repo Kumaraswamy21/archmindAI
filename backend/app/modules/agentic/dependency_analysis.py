@@ -63,6 +63,7 @@ class DependencyAnalysisAgent:
                     f"{edge.source_symbol} {edge.relationship_type} {edge.target_symbol}; "
                     f"resolution_status={edge.resolution_status}"
                 ),
+                qualified_symbol=edge.source_symbol,
             )
             for edge in relevant
         ], limitations
