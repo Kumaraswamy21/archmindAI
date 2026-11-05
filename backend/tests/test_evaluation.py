@@ -14,17 +14,12 @@ from app.main import create_app
 from app.modules.code_intelligence.chunking.java_chunker import JavaAstChunker
 from app.modules.code_intelligence.chunking.schemas import JavaChunk
 from app.modules.code_intelligence.java_parser import JavaParserAdapter
-from app.modules.code_intelligence.persistence import ChunkPersistence
 from app.modules.code_intelligence.symbol_extractor import JavaSymbolExtractor
 from app.modules.evaluation.dataset_loader import DatasetLoader
 from app.modules.evaluation.metrics import calculate_metrics
 from app.modules.evaluation.schemas import DatasetQuestion, EvaluationDataset, EvaluationRequest
 from app.modules.evaluation.service import RetrievalEvaluationService
 from app.modules.evaluation.snapshot import snapshot_id
-from app.modules.retrieval.hybrid_service import HybridSearchService
-from app.modules.retrieval.rerank_service import RerankSearchService
-from app.modules.retrieval.service import KeywordSearchService
-from app.modules.semantic_search.service import SemanticSearchService
 
 
 def chunk(repository_id, symbol):

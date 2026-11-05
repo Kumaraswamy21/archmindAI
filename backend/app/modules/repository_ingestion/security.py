@@ -14,6 +14,7 @@ class RepositoryConfiguration:
     approved_roots: tuple[Path, ...]
     max_files: int
     max_file_size_bytes: int
+    upload_root: Path = Path(__file__).resolve().parents[3] / ".uploads"
 
     @classmethod
     def from_environment(cls) -> "RepositoryConfiguration":
@@ -46,6 +47,7 @@ class RepositoryConfiguration:
             approved_roots=tuple(Path(root) for root in roots),
             max_files=max_files,
             max_file_size_bytes=max_file_size_bytes,
+            upload_root=Path(os.environ.get("ARCHMIND_UPLOAD_ROOT", str(cls.upload_root))).resolve(),
         )
 
 

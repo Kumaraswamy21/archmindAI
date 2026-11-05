@@ -1,6 +1,6 @@
 # Frontend API contract (Phases 6.6.1–6.6.3)
 
-All routes below are under `/api/v1`. They use JSON and UUID repository IDs. The server reads source only through administrator-configured aliases; request bodies never accept absolute paths or Git URLs. With `DATABASE_URL` configured, registration writes a `repositories` row immediately and list/detail/source operations resolve the same ID after backend restart. Apply the existing Alembic migrations before registration. Without a database URL, the Phase 1–3 in-memory behavior remains available but is not durable.
+All routes below are under `/api/v1` and use UUID repository IDs. The server reads source through administrator-configured aliases or uploaded ZIP archives; request bodies never accept absolute paths or Git URLs. With `DATABASE_URL` configured, registration writes a `repositories` row immediately and list/detail/source operations resolve the same ID after backend restart. Uploaded source files must also remain on the backend host (or shared storage). Apply the existing Alembic migrations before registration. Without a database URL, the Phase 1–3 in-memory behavior remains available but is not durable.
 
 The tracked [OpenAPI export](openapi.json) matches the generated `/openapi.json` endpoint and can seed a typed frontend client.
 
@@ -14,6 +14,7 @@ The project workspace can recover a job after reload with `GET /repositories/{re
 | --- | --- | --- |
 | `GET /repositories/approved-aliases` | None | `{"aliases":["sample-ecommerce"]}`; only available, server-approved alias names |
 | `POST /repositories` | `{"name":"Customer Portal","source_alias":"sample-ecommerce"}` | HTTP 201 project metadata |
+| `POST /repositories/upload?name=Customer%20Portal` | Raw ZIP body with `Content-Type: application/zip`, up to 500 MB | HTTP 201 project metadata; supported source files are stored under `ARCHMIND_UPLOAD_ROOT` |
 | `GET /repositories` | `limit` 1–100 (default 50), `offset` >= 0 (default 0) | `{"total":1,"limit":50,"offset":0,"repositories":[...]}` |
 | `GET /repositories/{repository_id}` | UUID path parameter | Project metadata or HTTP 404 |
 

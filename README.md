@@ -16,6 +16,7 @@ Phase 6.6.2 adds [durable project indexing jobs](docs/modules/project-onboarding
 - [Keyword and symbol search API](docs/modules/retrieval.md)
 - [Grounded RAG API](docs/modules/rag.md)
 - [Retrieval evaluation](docs/modules/evaluation.md)
+- [Langfuse observability](docs/observability/langfuse.md)
 
 Phase 5.4 adds Gemini-powered grounded answers with released runtime prompt templates, a central registry, and a shared loader. See the [prompt versioning standard](docs/prompt-management.md).
 

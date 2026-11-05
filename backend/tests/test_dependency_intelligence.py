@@ -197,7 +197,7 @@ def test_unconfigured_app_documents_endpoints():
 def test_dependency_migration_and_repository_scoped_indexes():
     config = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
     revisions = ScriptDirectory.from_config(config)
-    assert revisions.get_current_head() == "20261031_0006"
+    assert revisions.get_current_head() == "20261103_0007"
     assert revisions.get_revision("20261031_0005").down_revision == "20261030_0004"
     table = DependencyRelationshipRow.__table__
     assert table.c.repository_id.foreign_keys

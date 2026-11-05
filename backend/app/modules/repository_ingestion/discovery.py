@@ -16,7 +16,7 @@ SOURCE_LANGUAGES: dict[str, Language] = {
     ".ts": "typescript",
 }
 EXCLUDED_DIRECTORIES = frozenset(
-    {".git", "node_modules", "target", "build", "dist", "__pycache__", ".venv"}
+    {".git", "node_modules", "target", "build", "dist", "__pycache__", ".venv", "__MACOSX"}
 )
 
 
@@ -50,6 +50,8 @@ def discover_source_files(
                 ]
                 relative_parts = Path(directory).parts
                 for name in filenames:
+                    if name.startswith("._"):
+                        continue
                     language = SOURCE_LANGUAGES.get(Path(name).suffix)
                     if language is None:
                         continue

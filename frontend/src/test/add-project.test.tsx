@@ -28,6 +28,7 @@ describe("add project", () => {
     });
     vi.stubGlobal("fetch", fetcher);
     render(<NewProjectPage />);
+    await userEvent.setup().selectOptions(screen.getByRole("combobox", { name: "Source type" }), "approved");
     await screen.findByRole("option", { name: "approved" });
     await userEvent.setup().click(screen.getByRole("button", { name: "Create project" }));
     expect(screen.getByText("Enter a project name.")).toBeInTheDocument();
@@ -48,6 +49,7 @@ describe("add project", () => {
       throw new Error("Unexpected API request");
     }));
     render(<NewProjectPage />);
+    await userEvent.setup().selectOptions(screen.getByRole("combobox", { name: "Source type" }), "approved");
     await screen.findByRole("option", { name: "approved" });
     await userEvent.setup().type(screen.getByRole("textbox", { name: "Display name" }), "Existing");
     await userEvent.setup().selectOptions(screen.getByRole("combobox", { name: "Approved source" }), "approved");
@@ -60,6 +62,42 @@ describe("add project", () => {
   it("shows alias-loading failures", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
     render(<NewProjectPage />);
+    await userEvent.setup().selectOptions(screen.getByRole("combobox", { name: "Source type" }), "approved");
     expect(await screen.findByRole("alert")).toHaveTextContent("The API is unavailable");
+  });
+
+  it("uploads a ZIP and opens the project even when no aliases exist", async () => {
+    const projectId = "48b55c4c-5170-49cf-a5d5-2117ebae26de";
+    const fetcher = vi.fn().mockImplementation((url: string) => Promise.resolve(
+      url.endsWith("/approved-aliases") ? json({ aliases: [] }) : json({
+        repository_id: projectId, name: "My Code", source_alias: "upload-test",
+        status: "REGISTERED", registered_at: "2026-11-01T00:00:00Z",
+      }, 201),
+    ));
+    vi.stubGlobal("fetch", fetcher);
+    render(<NewProjectPage />);
+    await userEvent.setup().type(screen.getByRole("textbox", { name: "Display name" }), "My Code");
+    await userEvent.setup().click(screen.getByRole("button", { name: "Create project" }));
+    expect(screen.getByText("Choose a ZIP file.")).toBeInTheDocument();
+    const archive = new File(["zip"], "code.zip", { type: "application/zip" });
+    await userEvent.setup().upload(screen.getByLabelText("Repository ZIP"), archive);
+    await userEvent.setup().click(screen.getByRole("button", { name: "Create project" }));
+    await waitFor(() => expect(navigation.push).toHaveBeenCalledWith(`/projects/${projectId}`));
+    const post = fetcher.mock.calls.find(call => (call[1] as RequestInit | undefined)?.method === "POST");
+    expect(post?.[0]).toContain("/repositories/upload?name=My%20Code");
+    expect(post?.[1]?.body).toBe(archive);
+  });
+
+  it("shows the 500 MB ZIP limit before sending", async () => {
+    const fetcher = vi.fn().mockResolvedValue(json({ aliases: [] }));
+    vi.stubGlobal("fetch", fetcher);
+    render(<NewProjectPage />);
+    await userEvent.setup().type(screen.getByRole("textbox", { name: "Display name" }), "Large repo");
+    const archive = new File(["zip"], "large.zip", { type: "application/zip" });
+    Object.defineProperty(archive, "size", { value: 500 * 1024 * 1024 + 1 });
+    await userEvent.setup().upload(screen.getByLabelText("Repository ZIP"), archive);
+    await userEvent.setup().click(screen.getByRole("button", { name: "Create project" }));
+    expect(screen.getByText("Choose a ZIP file no larger than 500 MB.")).toBeInTheDocument();
+    expect(fetcher).toHaveBeenCalledTimes(1);
   });
 });

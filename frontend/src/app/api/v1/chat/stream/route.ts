@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 export const runtime = "nodejs";
 
 export async function POST(request: Request): Promise<Response> {
-  const apiOrigin = process.env.ARCHMIND_API_URL ?? "http://127.0.0.1:8000";
+  const apiOrigin = new URL(process.env.ARCHMIND_API_URL ?? "http://127.0.0.1:8000").origin;
   let upstream: Response;
   try {
     upstream = await fetch(`${apiOrigin}/api/v1/chat/stream`, {

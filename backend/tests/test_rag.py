@@ -130,6 +130,18 @@ def test_model_insufficient_response_is_standardized():
     assert response.limitations == ["No order creation method was supplied."]
 
 
+def test_model_insufficient_response_discards_conflicting_citations():
+    repository_id = uuid4()
+    rag, _, _, _ = service(
+        repository_id, [source(repository_id)],
+        generated(confidence="INSUFFICIENT", evidence_id="E99"),
+    )
+    response = rag.answer(AskRequest(repository_id=repository_id, question="OAuth rotation?"))
+    assert response.status == "INSUFFICIENT_EVIDENCE"
+    assert response.citations == []
+    assert any("discarded" in item for item in response.limitations)
+
+
 def test_context_deduplicates_contained_spans_and_preserves_source():
     repository_id = uuid4()
     first = source(repository_id, "first", content="line one\nline two", start=0)

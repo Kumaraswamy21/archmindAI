@@ -5,6 +5,7 @@ from typing import Literal, Protocol
 
 from pydantic import BaseModel, Field
 
+from app.core.observability import get_tracer
 from app.errors import ApplicationError
 from app.modules.rag.llm_provider import (
     RagProviderError, RagProviderInvalidResponse, RagProviderRateLimited,
@@ -69,6 +70,10 @@ class IntentClassifier:
     def classify(self, question: str) -> IntentDecision:
         for pattern, intent, reason in _RULES:
             if pattern.search(question):
+                with get_tracer().span("intent_classification", metadata={
+                    "classifier": "rules", "intent": intent,
+                }) as span:
+                    span.set(output={"intent": intent})
                 return IntentDecision(classification=IntentClassification(
                     intent=intent, routing_reason=reason,
                 ))
@@ -80,24 +85,37 @@ class IntentClassifier:
             system_text, user_text = prompt.render(question=question)
         except PromptError as exc:
             raise ApplicationError(503, "PROMPT_CONFIGURATION_ERROR", "Classifier prompts are unavailable.") from exc
-        try:
-            result = self._provider.generate_structured(
-                system_text, user_text, IntentClassification,
+        with get_tracer().span(
+            "intent_classification", as_type="generation",
+            model=self._provider.model_identifier,
+            metadata={
+                "classifier": "llm",
+                "generation_model": self._provider.model_identifier,
+                "prompt_name": prompt.name,
+                "system_prompt_version": prompt.system_version,
+                "user_prompt_template_version": prompt.user_version,
+            },
+        ) as span:
+            try:
+                result = self._provider.generate_structured(
+                    system_text, user_text, IntentClassification,
+                )
+            except RagProviderError as exc:
+                span.record_error(exc)
+                status = 429 if isinstance(exc, RagProviderRateLimited) else 504 if isinstance(exc, RagProviderTimeout) else 502
+                code = "CLASSIFIER_INVALID_RESPONSE" if isinstance(exc, RagProviderInvalidResponse) else "CLASSIFIER_PROVIDER_FAILED"
+                raise ApplicationError(status, code, "Intent classification failed.") from exc
+            try:
+                validated = IntentClassification.model_validate(result)
+            except (TypeError, ValueError) as exc:
+                raise ApplicationError(502, "CLASSIFIER_INVALID_RESPONSE", "Intent classification failed.") from exc
+            if validated.classifier_version != CLASSIFIER_VERSION:
+                raise ApplicationError(502, "CLASSIFIER_INVALID_RESPONSE", "Intent classification failed.")
+            span.set(metadata={"intent": validated.intent}, output={"intent": validated.intent})
+            return IntentDecision(
+                classification=validated,
+                prompt_versions=PromptVersions(
+                    name=prompt.name, system=prompt.system_version, user=prompt.user_version,
+                ),
+                model_identifier=self._provider.model_identifier,
             )
-        except RagProviderError as exc:
-            status = 429 if isinstance(exc, RagProviderRateLimited) else 504 if isinstance(exc, RagProviderTimeout) else 502
-            code = "CLASSIFIER_INVALID_RESPONSE" if isinstance(exc, RagProviderInvalidResponse) else "CLASSIFIER_PROVIDER_FAILED"
-            raise ApplicationError(status, code, "Intent classification failed.") from exc
-        try:
-            validated = IntentClassification.model_validate(result)
-        except (TypeError, ValueError) as exc:
-            raise ApplicationError(502, "CLASSIFIER_INVALID_RESPONSE", "Intent classification failed.") from exc
-        if validated.classifier_version != CLASSIFIER_VERSION:
-            raise ApplicationError(502, "CLASSIFIER_INVALID_RESPONSE", "Intent classification failed.")
-        return IntentDecision(
-            classification=validated,
-            prompt_versions=PromptVersions(
-                name=prompt.name, system=prompt.system_version, user=prompt.user_version,
-            ),
-            model_identifier=self._provider.model_identifier,
-        )

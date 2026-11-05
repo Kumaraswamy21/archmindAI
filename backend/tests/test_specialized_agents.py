@@ -160,6 +160,29 @@ def test_invalid_citations_and_cross_repository_evidence_are_rejected():
     assert error.value.code == "INVALID_EVIDENCE"
 
 
+def test_specialist_discards_citations_when_model_reports_insufficient_evidence():
+    repository_id = uuid4()
+    evidence = [AgentEvidence(
+        key="edge:1", repository_id=repository_id, file_path="src/A.java",
+        start_line=2, end_line=4, kind="static_dependency", content="A CALLS B; RESOLVED",
+    )]
+    answer = GeneratedAnswer(
+        answer="Unsupported claim [E99].",
+        citations=[Citation(evidence_id="E99", file_path="src/Other.java", start_line=1, end_line=1)],
+        confidence="INSUFFICIENT", limitations=[],
+    )
+    provider = SimpleNamespace(
+        model_identifier="gemini-2.5-flash", generate=MagicMock(return_value=answer),
+    )
+    result = PromptedAnalyzer(PromptLoader(), provider).answer(
+        "dependency_analysis", repository_id, "OAuth rotation?", evidence,
+    )
+    assert result.confidence == "INSUFFICIENT"
+    assert result.citations == []
+    assert "Unsupported claim" not in result.answer
+    assert any("discarded" in item for item in result.limitations)
+
+
 def test_architecture_collects_sources_in_parallel_then_merges_deterministically():
     repository_id = uuid4()
     barrier = Barrier(2, timeout=2)

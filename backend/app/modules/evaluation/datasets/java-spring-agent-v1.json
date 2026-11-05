@@ -1,0 +1,15 @@
+{
+  "dataset_id": "java-spring-agent-v1",
+  "version": "1.0.0",
+  "repository_snapshot_id": "sha256:ac782ebbcb61c49c891fe6faa76e163a44d80fa51e187f7a67e1a8c51c2308b8",
+  "questions": [
+    {"id": "A01", "category": "code_lookup", "question": "Where is OrderController.placeOrder implemented?", "expected_intent": "CODE_LOOKUP", "expected_workflow": "code_analysis", "expect_abstention": false},
+    {"id": "A02", "category": "method_explanation", "question": "How does OrderService.placeOrder process an order?", "expected_intent": "CODE_EXPLANATION", "expected_workflow": "code_analysis", "expect_abstention": false},
+    {"id": "A03", "category": "dependency_analysis", "question": "What depends on OrderService?", "expected_intent": "DEPENDENCY_ANALYSIS", "expected_workflow": "dependency_analysis", "expect_abstention": false},
+    {"id": "A04", "category": "architecture_analysis", "question": "Give an architecture analysis of order placement.", "expected_intent": "ARCHITECTURE_ANALYSIS", "expected_workflow": "architecture_analysis", "expect_abstention": false},
+    {"id": "A05", "category": "change_impact", "question": "What breaks if OrderService.placeOrder changes?", "expected_intent": "DEPENDENCY_ANALYSIS", "expected_workflow": "dependency_analysis", "expect_abstention": false},
+    {"id": "A06", "category": "dependency_analysis", "question": "What are the dependencies of OrderService?", "expected_intent": "DEPENDENCY_ANALYSIS", "expected_workflow": "dependency_analysis", "expect_abstention": false},
+    {"id": "A07", "category": "insufficient_evidence", "question": "Where is Kafka event publishing implemented?", "expected_intent": "CODE_LOOKUP", "expected_workflow": "code_analysis", "expect_abstention": true},
+    {"id": "A08", "category": "insufficient_evidence", "question": "Explain how fraud scoring works.", "expected_intent": "CODE_EXPLANATION", "expected_workflow": "code_analysis", "expect_abstention": true}
+  ]
+}

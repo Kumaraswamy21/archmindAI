@@ -8,6 +8,7 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
+from app.core.observability import get_tracer
 from app.errors import ApplicationError
 from app.modules.agentic.analysis_common import AgentEvidence, AgentResult
 from app.modules.rag.context_builder import Evidence, EvidenceContext, EvidenceSource
@@ -56,6 +57,17 @@ class EvidenceVerifier:
     """
 
     def verify(self, repository_id: UUID, result: AgentResult) -> VerificationReport:
+        with get_tracer().span("evidence_verification", as_type="evaluator", metadata={
+            "repository_id": str(repository_id),
+        }) as span:
+            report = self._verify(repository_id, result)
+            span.set(metadata={
+                "verification_status": report.status,
+                "unsupported_claim_count": len(report.unsupported_claims),
+            }, output={"verification_status": report.status})
+            return report
+
+    def _verify(self, repository_id: UUID, result: AgentResult) -> VerificationReport:
         evidence = result.evidence or {}
         for item in evidence.values():
             self._validate_scope(repository_id, item)

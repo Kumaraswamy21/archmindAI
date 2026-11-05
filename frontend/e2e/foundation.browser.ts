@@ -43,8 +43,19 @@ test("mobile navigation and theme are usable", async ({ page }) => {
 test("approved aliases populate project registration", async ({ page }) => {
   await page.goto("/projects/new");
   await expect(page.getByRole("heading", { name: "Add a project" })).toBeVisible();
+  await page.getByLabel("Source type").selectOption("approved");
   await expect(page.getByRole("option", { name: "customer-portal" })).toBeAttached();
   await page.getByLabel("Display name").fill("New workspace");
   await page.getByLabel("Approved source").selectOption("customer-portal");
   await expect(page.getByRole("button", { name: /Create project/ })).toBeEnabled();
+});
+
+test("ZIP upload is available with no approved aliases", async ({ page }) => {
+  await page.route("**/api/v1/repositories/approved-aliases", route => route.fulfill({ json: { aliases: [] } }));
+  await page.route("**/api/v1/repositories/upload?*", route => route.fulfill({ status: 201, json: project }));
+  await page.goto("/projects/new");
+  await page.getByLabel("Display name").fill("Customer Portal");
+  await page.getByLabel("Repository ZIP").setInputFiles({ name: "source.zip", mimeType: "application/zip", buffer: Buffer.from("ZIP") });
+  await page.getByRole("button", { name: /Create project/ }).click();
+  await expect(page).toHaveURL(new RegExp(`/projects/${project.repository_id}$`));
 });

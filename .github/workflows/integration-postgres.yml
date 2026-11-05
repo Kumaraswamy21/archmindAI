@@ -1,0 +1,48 @@
+name: Isolated PostgreSQL integration
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_isolated_database:
+        description: 'Confirm CI_ISOLATED_DATABASE_URL targets a dedicated archmind_ci_* database'
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  isolated-postgres:
+    if: ${{ inputs.confirm_isolated_database }}
+    runs-on: ubuntu-latest
+    environment: ci-isolated-postgres
+    env:
+      DATABASE_URL: ${{ secrets.CI_ISOLATED_DATABASE_URL }}
+      ARCHMIND_CI_DATABASE_NAME: ${{ vars.CI_ISOLATED_DATABASE_NAME }}
+      DATABASE_SSL_MODE: require
+      ARCHMIND_RUN_PROJECT_INDEX_REMOTE_TEST: '1'
+      ARCHMIND_RUN_WORKFLOW_REMOTE_TEST: '1'
+      GEMINI_API_KEY: ''
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+      - name: Install existing backend package
+        working-directory: backend
+        run: python -m pip install -e '.[test]'
+      - name: Verify dedicated test database name
+        working-directory: backend
+        run: python scripts/assert_isolated_db.py
+      - name: Run disposable-schema integration tests
+        working-directory: backend
+        run: python -m pytest -q --tb=line --show-capture=no tests/test_workflow_reliability_remote.py tests/test_project_indexing_remote.py
+      - name: Summary
+        if: always()
+        run: |
+          echo 'Isolated PostgreSQL integration: ${{ job.status }}' >> "$GITHUB_STEP_SUMMARY"

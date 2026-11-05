@@ -1,0 +1,15 @@
+{
+  "dataset_id": "java-spring-search-v1",
+  "version": "1.0.0",
+  "repository_snapshot_id": "sha256:ac782ebbcb61c49c891fe6faa76e163a44d80fa51e187f7a67e1a8c51c2308b8",
+  "questions": [
+    {"id": "R01", "question": "Where is the HTTP order endpoint implemented?", "expected_symbols": ["example.orders.OrderController.placeOrder"]},
+    {"id": "R02", "question": "How does OrderService.placeOrder process an order?", "expected_symbols": ["example.orders.OrderService.placeOrder"]},
+    {"id": "R03", "question": "Where is a payment charged?", "expected_symbols": ["example.orders.PaymentGateway.charge", "example.orders.OrderService.placeOrder"]},
+    {"id": "R04", "question": "Which constructor injects OrderRepository and PaymentGateway?", "expected_symbols": ["example.orders.OrderService.OrderService"]},
+    {"id": "R05", "question": "Where is an order saved?", "expected_symbols": ["example.orders.OrderRepository.save", "example.orders.OrderService.placeOrder"]},
+    {"id": "R06", "question": "Which method cancels an order?", "expected_symbols": ["example.orders.OrderService.cancelOrder"]},
+    {"id": "R07", "question": "What breaks if OrderService.placeOrder changes?", "expected_symbols": ["example.orders.OrderController.placeOrder", "example.orders.OrderService.placeOrder"]},
+    {"id": "R08", "question": "Describe the order placement architecture.", "expected_symbols": ["example.orders.OrderController.placeOrder", "example.orders.OrderService.placeOrder", "example.orders.OrderRepository.save", "example.orders.PaymentGateway.charge"]}
+  ]
+}

@@ -52,3 +52,4 @@ class ChatResponse(BaseModel):
     execution_duration_ms: float = Field(ge=0)
     prompt_versions: ChatPromptVersions
     model_identifier: str | None
+    workflow_id: UUID | None = None

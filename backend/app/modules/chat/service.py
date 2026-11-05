@@ -4,7 +4,9 @@ from uuid import UUID, uuid4
 from threading import Event
 from typing import Callable
 
+from app.core.observability import request_trace
 from app.errors import ApplicationError
+from app.modules.workflow_reliability.runner import WorkflowRunner
 from app.modules.agentic.analysis_common import AgentEvidence
 from app.modules.agentic.evidence_verification import EvidenceVerifier
 from app.modules.agentic.schemas import AnalyzeRequest, AnalyzeResponse
@@ -15,29 +17,63 @@ from app.modules.rag.service import RagService
 
 
 class ChatService:
-    def __init__(self, workflow: AgenticWorkflow) -> None:
+    def __init__(self, workflow: AgenticWorkflow, runner: WorkflowRunner | None = None) -> None:
         self._workflow = workflow
+        self._runner = runner or WorkflowRunner(None)
 
     def respond(self, request: ChatRequest, *, request_id: UUID | None = None) -> ChatResponse:
-        result, evidence = self._workflow.analyze_with_evidence(
-            AnalyzeRequest(repository_id=request.repository_id, question=request.message),
-            request_id=request_id,
-        )
-        return self._map_response(request, result, evidence)
+        correlation = request_id or uuid4()
+        with request_trace(
+            "chat", workflow_type="chat", repository_id=request.repository_id,
+            request_id=correlation, session_id=request.conversation_id, question=request.message,
+        ) as span:
+            def operation(_workflow_id: UUID):
+                return self._workflow.analyze_with_evidence(
+                    AnalyzeRequest(repository_id=request.repository_id, question=request.message),
+                    request_id=correlation,
+                )
+            (result, evidence), workflow_id = self._runner.run(
+                repository_id=request.repository_id, request_id=correlation,
+                workflow_type="chat", question=request.message, operation=operation,
+                workflow_id=correlation,
+            )
+            mapped = self._map_response(request, result, evidence, workflow_id=workflow_id)
+            span.set(output={
+                "confidence": mapped.workflow_status,
+                "citation_count": len(mapped.citations),
+                "verification_status": mapped.verification_status,
+            })
+            return mapped
 
     def stream_respond(
         self, request: ChatRequest, *, request_id: UUID,
         emit: Callable[[str, dict[str, object]], None], cancel_event: Event,
     ) -> ChatResponse:
-        result, evidence = self._workflow.stream_with_evidence(
-            AnalyzeRequest(repository_id=request.repository_id, question=request.message),
-            request_id=request_id, emit=emit, cancel_event=cancel_event,
-        )
-        return self._map_response(request, result, evidence)
+        with request_trace(
+            "chat", workflow_type="chat", repository_id=request.repository_id,
+            request_id=request_id, session_id=request.conversation_id, question=request.message,
+        ) as span:
+            def operation(_workflow_id: UUID):
+                return self._workflow.stream_with_evidence(
+                    AnalyzeRequest(repository_id=request.repository_id, question=request.message),
+                    request_id=request_id, emit=emit, cancel_event=cancel_event,
+                )
+            (result, evidence), workflow_id = self._runner.run(
+                repository_id=request.repository_id, request_id=request_id,
+                workflow_type="chat", question=request.message, operation=operation,
+                cancel_event=cancel_event, workflow_id=request_id,
+            )
+            mapped = self._map_response(request, result, evidence, workflow_id=workflow_id)
+            span.set(output={
+                "confidence": mapped.workflow_status,
+                "citation_count": len(mapped.citations),
+                "verification_status": mapped.verification_status,
+            })
+            return mapped
 
     def _map_response(
         self, request: ChatRequest, result: AnalyzeResponse,
-        evidence: dict[str, AgentEvidence],
+        evidence: dict[str, AgentEvidence], *, workflow_id: UUID | None = None,
     ) -> ChatResponse:
         if result.repository_id != request.repository_id:
             raise ApplicationError(503, "RETRIEVAL_SCOPE_MISMATCH", "Analysis left the requested repository.")
@@ -61,6 +97,7 @@ class ChatService:
                 classifier=metadata.classifier_prompt_versions,
             ),
             model_identifier=metadata.model_identifier or metadata.classifier_model_identifier,
+            workflow_id=workflow_id,
         )
 
     @staticmethod

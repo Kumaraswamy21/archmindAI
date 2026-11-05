@@ -62,6 +62,10 @@ export const api = {
     apiFetch<Repository>("/repositories", {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
     }),
+  uploadRepository: (name: string, archive: File) =>
+    apiFetch<Repository>(`/repositories/upload?name=${encodeURIComponent(name)}`, {
+      method: "POST", headers: { "Content-Type": "application/zip" }, body: archive,
+    }),
   indexStatus: (id: string, signal?: AbortSignal) =>
     apiFetch<IndexStatus>(`/repositories/${encodeURIComponent(id)}/index/status`, { signal }),
   repositoryFiles: (id: string, signal?: AbortSignal) =>

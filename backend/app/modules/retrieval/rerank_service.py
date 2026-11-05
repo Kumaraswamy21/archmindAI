@@ -2,6 +2,7 @@
 
 from sqlalchemy.exc import SQLAlchemyError
 
+from app.core.observability import get_tracer
 from app.errors import ApplicationError
 from app.modules.retrieval.hybrid_config import HybridSearchSettings
 from app.modules.retrieval.hybrid_schemas import HybridSearchRequest
@@ -26,6 +27,13 @@ class RerankSearchService:
 
     def search(self, request: RerankRequest) -> RerankResponse:
         pool = max(request.top_k, self._settings.hybrid_candidate_pool)
+        with get_tracer().span("reranking", metadata={
+            "retrieval_strategy": "metadata_heuristic_v1",
+            "repository_id": str(request.repository_id),
+        }) as span:
+            return self._search(request, pool, span)
+
+    def _search(self, request: RerankRequest, pool: int, span) -> RerankResponse:
         hybrid = self._hybrid_service.search(HybridSearchRequest(
             repository_id=request.repository_id, query=request.query, top_k=pool,
         ))
@@ -60,8 +68,10 @@ class RerankSearchService:
             for rank, item in enumerate(hybrid.results, start=1)
         ]
         ranked = self._reranker.rerank(request.query, candidates)
-        return RerankResponse(
+        response = RerankResponse(
             repository_id=request.repository_id,
             reranker=self._reranker.version,
             results=ranked[:request.top_k],
         )
+        span.set(metadata={"result_count": len(response.results)})
+        return response

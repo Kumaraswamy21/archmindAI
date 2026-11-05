@@ -21,13 +21,24 @@ from app.modules.project_indexing.persistence import IndexJobStore
 from app.modules.project_indexing.schemas import STAGES
 from app.modules.project_indexing.worker import IndexWorker
 from app.modules.vector_store.config import EmbeddingSettings
-from app.modules.vector_store.embeddings.gemini import GeminiEmbeddingProvider
 
 
 pytestmark = pytest.mark.skipif(
     os.environ.get("ARCHMIND_RUN_PROJECT_INDEX_REMOTE_TEST") != "1",
-    reason="Requires explicit opt-in, managed PostgreSQL, and Gemini credentials.",
+    reason="Requires explicit opt-in and managed PostgreSQL credentials.",
 )
+
+
+class DeterministicEmbeddingProvider:
+    def __init__(self, settings):
+        self.model_identifier = settings.embedding_model
+        self.output_dimension = settings.embedding_dimension
+
+    def embed_documents(self, texts):
+        return [[0.01] * self.output_dimension for _ in texts]
+
+    def embed_query(self, text):
+        return [0.01] * self.output_dimension
 
 
 def test_complete_index_job_in_isolated_remote_schema(monkeypatch):
@@ -38,6 +49,7 @@ def test_complete_index_job_in_isolated_remote_schema(monkeypatch):
     admin = create_database_engine(DatabaseSettings())
     with admin.begin() as connection:
         connection.execute(text(f'CREATE SCHEMA "{schema}"'))
+        connection.execute(text(f'CREATE TABLE "{schema}".alembic_version (version_num varchar(32) PRIMARY KEY)'))
     try:
         monkeypatch.setenv("PGOPTIONS", f"-csearch_path={schema},public")
         command.upgrade(Config("alembic.ini"), "head")
@@ -47,13 +59,10 @@ def test_complete_index_job_in_isolated_remote_schema(monkeypatch):
         monkeypatch.setenv("ARCHMIND_REPOSITORY_ALIASES", json.dumps({alias: str(sample)}))
         app = create_app()
         try:
-            settings = EmbeddingSettings()
-            provider = GeminiEmbeddingProvider(
-                api_key=settings.gemini_api_key.get_secret_value(),
-                model_identifier=settings.embedding_model,
-                output_dimension=settings.embedding_dimension,
-                timeout_seconds=settings.embedding_request_timeout_seconds,
-            )
+            with app.state.db_engine.connect() as connection:
+                assert connection.scalar(text("select current_schema()")) == schema
+            settings = EmbeddingSettings(gemini_api_key="deterministic-test-only")
+            provider = DeterministicEmbeddingProvider(settings)
             sessions = create_session_factory(app.state.db_engine)
             worker = IndexWorker(IndexJobStore(sessions), app.state.repository_service,
                                  provider, settings)
@@ -61,14 +70,17 @@ def test_complete_index_job_in_isolated_remote_schema(monkeypatch):
                 registered = client.post("/api/v1/repositories", json={
                     "name": "Isolated indexing project", "source_alias": alias,
                 })
-                assert registered.status_code == 201
+                assert registered.status_code == 201, registered.json()
                 repository_id = registered.json()["repository_id"]
                 queued = client.post(f"/api/v1/repositories/{repository_id}/index")
-                assert queued.status_code == 202
+                assert queued.status_code == 202, queued.json()
                 job_id = queued.json()["job_id"]
                 assert client.post(f"/api/v1/repositories/{repository_id}/index").status_code == 409
                 assert client.get(f"/api/v1/repositories/{uuid4()}/index/jobs/{job_id}").status_code == 404
                 assert worker.process_one()
+                assert client.get(
+                    f"/api/v1/workflows/{job_id}", params={"repository_id": repository_id},
+                ).json()["status"] == "COMPLETED"
                 completed = client.get(f"/api/v1/repositories/{repository_id}/index/jobs/{job_id}")
                 assert completed.status_code == 200
                 assert completed.json()["status"] == "COMPLETED"
@@ -92,6 +104,9 @@ def test_complete_index_job_in_isolated_remote_schema(monkeypatch):
                 replacement = IndexWorker(IndexJobStore(sessions), app.state.repository_service,
                                           provider, settings)
                 assert replacement.process_one()
+                with pytest.raises(RuntimeError):
+                    worker.jobs.heartbeat(old_claim)
+                assert not replacement.process_one()
                 assert client.get(f"/api/v1/repositories/{repository_id}/index/jobs/{retry_id}").json()["status"] == "COMPLETED"
                 with sessions() as session:
                     assert session.get(RepositoryRow, UUID(repository_id)).active_snapshot_id == snapshot

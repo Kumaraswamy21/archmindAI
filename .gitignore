@@ -1,4 +1,4 @@
-# Local notes and unapproved prompt drafts must stay outside version control.
+yy# Local notes and unapproved prompt drafts must stay outside version control.
 .local-docs/
 
 # Local configuration, secrets, and generated Python files.
@@ -6,6 +6,7 @@
 .env.*
 !.env.example
 .secrets/
+.uploads/
 .venv/
 __pycache__/
 .pytest_cache/

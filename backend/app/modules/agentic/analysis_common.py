@@ -6,6 +6,7 @@ from pathlib import PurePosixPath, PureWindowsPath
 from typing import Protocol
 from uuid import UUID
 
+from app.core.observability import get_tracer
 from app.errors import ApplicationError
 from app.modules.rag.llm_provider import (
     RagProviderError, RagProviderRateLimited, RagProviderTimeout,
@@ -134,17 +135,26 @@ class PromptedAnalyzer:
         except PromptError as exc:
             raise ApplicationError(503, "PROMPT_CONFIGURATION_ERROR", "Analysis prompts are unavailable.") from exc
         try:
-            generated = self._provider.generate(system_text, user_text)
+            with get_tracer().span("rag.answer", metadata={
+                "prompt_name": versions.name,
+                "system_prompt_version": versions.system,
+                "user_prompt_template_version": versions.user,
+                "generation_model": self._provider.model_identifier,
+                "repository_id": str(repository_id),
+            }):
+                generated = self._provider.generate(system_text, user_text)
         except RagProviderError as exc:
             status = 429 if isinstance(exc, RagProviderRateLimited) else 504 if isinstance(exc, RagProviderTimeout) else 502
             raise ApplicationError(status, exc.code, "Analysis generation failed.") from exc
         if generated.confidence == "INSUFFICIENT":
-            if generated.citations:
-                raise ApplicationError(502, "UNSUPPORTED_CITATION", "Generated answer has unsupported citations.")
+            discarded = (
+                ["Model citations were discarded because evidence was insufficient."]
+                if generated.citations else []
+            )
             return AgentResult(
                 answer="Insufficient repository evidence to answer this question.",
                 citations=[], confidence="INSUFFICIENT",
-                limitations=[*generated.limitations, *all_limitations],
+                limitations=[*generated.limitations, *all_limitations, *discarded],
                 prompt_versions=versions, model_identifier=self._provider.model_identifier,
                 evidence_count=len(by_id),
                 evidence=by_id,

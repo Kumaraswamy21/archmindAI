@@ -2,8 +2,9 @@
 
 import os
 import json
+from contextlib import asynccontextmanager
 from importlib.util import find_spec
-from urllib.parse import urlsplit
+from time import perf_counter
 from uuid import uuid4
 
 from fastapi import FastAPI
@@ -13,9 +14,18 @@ from starlette.exceptions import HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 
+from app.core.observability import configure_from_settings, get_tracer
+from app.core.runtime import RuntimeSettings, configured_origins, request_logger
+from app.core.request_limits import RequestBodyLimitMiddleware
 from app.api.health import router as health_router
 from app.api.questions import router as questions_router
-from app.errors import ApplicationError, handle_application_error, handle_validation_error, handle_http_error, handle_unexpected_error
+from app.errors import (
+    ApplicationError,
+    handle_application_error,
+    handle_validation_error,
+    handle_http_error,
+    handle_unexpected_error,
+)
 from app.db.config import DatabaseSettings
 from app.db.session import create_database_engine, create_session_factory
 from app.modules.code_intelligence.java_parser import JavaParserAdapter
@@ -26,7 +36,14 @@ from app.modules.repository_ingestion.registry import RepositoryRegistry
 from app.modules.repository_ingestion.persistence import ProjectStore
 from app.modules.project_indexing.persistence import IndexJobStore
 from app.modules.project_indexing.router import create_router as create_index_job_router
-from app.modules.repository_ingestion.router import create_router as create_repository_router
+from app.modules.workflow_reliability.router import (
+    create_router as create_workflow_router,
+)
+from app.modules.workflow_reliability.store import WorkflowStore
+from app.modules.workflow_reliability.runner import WorkflowRunner
+from app.modules.repository_ingestion.router import (
+    create_router as create_repository_router,
+)
 from app.modules.repository_ingestion.security import RepositoryConfiguration
 from app.modules.repository_ingestion.service import RepositoryService
 from app.modules.retrieval.persistence import KeywordSearchStore
@@ -57,10 +74,13 @@ from app.modules.agentic.architecture_analysis import ArchitectureAnalysisAgent
 from app.modules.agentic.analysis_common import PromptedAnalyzer
 from app.prompts.loader import PromptLoader
 from app.modules.evaluation.dataset_loader import DatasetLoader
+from app.modules.evaluation.agent_service import AgentEvaluationService
 from app.modules.evaluation.router import create_router as create_evaluation_router
 from app.modules.evaluation.service import RetrievalEvaluationService
 from app.modules.dependency_intelligence.persistence import DependencyPersistence
-from app.modules.dependency_intelligence.router import create_router as create_dependency_router
+from app.modules.dependency_intelligence.router import (
+    create_router as create_dependency_router,
+)
 from app.modules.dependency_intelligence.service import DependencyIntelligenceService
 from app.modules.semantic_search.persistence import SemanticSearchStore
 from app.modules.semantic_search.router import create_router as create_search_router
@@ -73,11 +93,36 @@ from app.modules.vector_store.service import EmbeddingService
 from app.modules.vector_store.status import IndexStatusService
 
 
+@asynccontextmanager
+async def _lifespan(_app: FastAPI):
+    workflow_store = getattr(_app.state, "workflow_store", None)
+    if workflow_store is not None:
+        try:
+            workflow_store.recover_stale(older_than_seconds=900)
+        except ApplicationError:
+            # Requests fail closed while PostgreSQL is unavailable; the next start can recover.
+            pass
+    try:
+        yield
+    finally:
+        try:
+            get_tracer().flush()
+        finally:
+            engine = getattr(_app.state, "db_engine", None)
+            if engine is not None:
+                engine.dispose()
+
+
 def create_app() -> FastAPI:
+    runtime = RuntimeSettings()
+    origins = configured_origins()
+    runtime.validate_startup(origins)
+    configure_from_settings()
     app = FastAPI(
         title="ArchMind AI API",
         version="0.1.0",
         description="Read-only repository intelligence and architecture analysis platform",
+        lifespan=_lifespan,
     )
 
     app.add_exception_handler(ApplicationError, handle_application_error)
@@ -85,24 +130,45 @@ def create_app() -> FastAPI:
     app.add_exception_handler(HTTPException, handle_http_error)
     app.add_exception_handler(Exception, handle_unexpected_error)
 
-    origins = json.loads(os.environ.get("ARCHMIND_FRONTEND_ORIGINS", "[]"))
-    if not isinstance(origins, list) or any(not isinstance(origin, str) for origin in origins):
-        raise ValueError("ARCHMIND_FRONTEND_ORIGINS must be a JSON list of origins.")
-    for origin in origins:
-        parsed = urlsplit(origin)
-        if (parsed.scheme not in {"http", "https"} or not parsed.netloc
-                or parsed.path or parsed.query or parsed.fragment or "*" in origin):
-            raise ValueError("ARCHMIND_FRONTEND_ORIGINS contains an invalid origin.")
-    app.add_middleware(CORSMiddleware, allow_origins=origins,
-                       allow_methods=["GET", "POST", "OPTIONS"],
-                       allow_headers=["Content-Type", "X-Request-ID"])
+    app.state.runtime = runtime
+    app.add_middleware(
+        RequestBodyLimitMiddleware, limit=runtime.archmind_json_body_limit_bytes
+    )
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=origins,
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["Content-Type", "X-Request-ID"],
+    )
 
     @app.middleware("http")
     async def request_identity(request: Request, call_next):
         request.state.request_id = str(uuid4())
-        response = await call_next(request)
-        response.headers["X-Request-ID"] = request.state.request_id
-        return response
+        started = perf_counter()
+        status_code = 500
+        try:
+            response = await call_next(request)
+            status_code = response.status_code
+            request.state.request_id = response.headers.get(
+                "X-Request-ID", request.state.request_id
+            )
+            response.headers["X-Request-ID"] = request.state.request_id
+            return response
+        finally:
+            request_logger().info(
+                json.dumps(
+                    {
+                        "event": "http_request",
+                        "request_id": request.state.request_id,
+                        "method": request.method,
+                        "path": request.url.path,
+                        "status_code": status_code,
+                        "duration_ms": round((perf_counter() - started) * 1000, 2),
+                    },
+                    separators=(",", ":"),
+                )
+            )
+
     app.include_router(health_router)
     app.include_router(questions_router)
 
@@ -121,8 +187,11 @@ def create_app() -> FastAPI:
     rag_service = None
     agentic_service = None
     evaluation_service = None
+    agent_evaluation_service = None
     dependency_service = None
     index_job_store = None
+    workflow_store = None
+    app.state.provider_configured = False
     if os.environ.get("DATABASE_URL"):
         settings = DatabaseSettings()
         engine = create_database_engine(settings, register_vectors=True)
@@ -130,7 +199,9 @@ def create_app() -> FastAPI:
         session_factory = create_session_factory(engine)
         service.attach_store(ProjectStore(session_factory))
         index_job_store = IndexJobStore(session_factory)
+        workflow_store = WorkflowStore(session_factory)
         app.state.index_job_store = index_job_store
+        app.state.workflow_store = workflow_store
         persistence = ChunkPersistence(session_factory)
         dependency_service = DependencyIntelligenceService(
             service, DependencyPersistence(session_factory)
@@ -143,6 +214,7 @@ def create_app() -> FastAPI:
             service, persistence, metadata_store, EmbeddingIndexSettings()
         )
         if os.environ.get("GEMINI_API_KEY", "").strip():
+            app.state.provider_configured = True
             embedding_settings = EmbeddingSettings()
             provider = GeminiEmbeddingProvider(
                 api_key=embedding_settings.gemini_api_key.get_secret_value(),
@@ -151,20 +223,30 @@ def create_app() -> FastAPI:
                 timeout_seconds=embedding_settings.embedding_request_timeout_seconds,
             )
             embedding_service = EmbeddingService(
-                service, persistence, metadata_store,
-                provider, embedding_settings,
+                service,
+                persistence,
+                metadata_store,
+                provider,
+                embedding_settings,
             )
             search_service = SemanticSearchService(
-                service, persistence, SemanticSearchStore(session_factory), provider,
+                service,
+                persistence,
+                SemanticSearchStore(session_factory),
+                provider,
                 embedding_settings,
             )
             hybrid_service = HybridSearchService(
-                search_service, keyword_service, HybridChunkStore(session_factory),
+                search_service,
+                keyword_service,
+                HybridChunkStore(session_factory),
                 HybridSearchSettings(),
             )
             rerank_service = RerankSearchService(
-                hybrid_service, RerankMetadataStore(session_factory),
-                MetadataHeuristicV1(), HybridSearchSettings(),
+                hybrid_service,
+                RerankMetadataStore(session_factory),
+                MetadataHeuristicV1(),
+                HybridSearchSettings(),
             )
             rag_settings = RagSettings()
             answer_provider = GeminiAnswerProvider(
@@ -174,17 +256,24 @@ def create_app() -> FastAPI:
             )
             prompt_loader = PromptLoader()
             rag_service = RagService(
-                rerank_service, RagEvidenceStore(session_factory), prompt_loader,
-                answer_provider, rag_settings,
+                rerank_service,
+                RagEvidenceStore(session_factory),
+                prompt_loader,
+                answer_provider,
+                rag_settings,
             )
             if find_spec("langgraph") is not None:
                 code_agent = CodeAnalysisAgent(
-                    rerank_service, rag_service,
-                    system_version=os.environ.get("CODE_ANALYSIS_SYSTEM_PROMPT_VERSION"),
+                    rerank_service,
+                    rag_service,
+                    system_version=os.environ.get(
+                        "CODE_ANALYSIS_SYSTEM_PROMPT_VERSION"
+                    ),
                     user_version=os.environ.get("CODE_ANALYSIS_USER_PROMPT_VERSION"),
                 )
                 analyzer = PromptedAnalyzer(
-                    prompt_loader, answer_provider,
+                    prompt_loader,
+                    answer_provider,
                     versions={
                         name: (
                             os.environ.get(f"{name.upper()}_SYSTEM_PROMPT_VERSION"),
@@ -195,24 +284,48 @@ def create_app() -> FastAPI:
                 )
                 dependency_agent = DependencyAnalysisAgent(dependency_service, analyzer)
                 agentic_service = AgenticWorkflow(
-                    code_agent, dependency_agent,
+                    code_agent,
+                    dependency_agent,
                     ArchitectureAnalysisAgent(code_agent, dependency_agent, analyzer),
                     IntentClassifier(
-                        prompt_loader, answer_provider,
-                        system_version=os.environ.get("QUERY_CLASSIFIER_SYSTEM_PROMPT_VERSION"),
-                        user_version=os.environ.get("QUERY_CLASSIFIER_USER_PROMPT_VERSION"),
+                        prompt_loader,
+                        answer_provider,
+                        system_version=os.environ.get(
+                            "QUERY_CLASSIFIER_SYSTEM_PROMPT_VERSION"
+                        ),
+                        user_version=os.environ.get(
+                            "QUERY_CLASSIFIER_USER_PROMPT_VERSION"
+                        ),
                     ),
                     service,
                 )
             evaluation_service = RetrievalEvaluationService(
-                service, persistence, search_service, keyword_service,
-                hybrid_service, rerank_service, DatasetLoader(),
+                service,
+                persistence,
+                search_service,
+                keyword_service,
+                hybrid_service,
+                rerank_service,
+                DatasetLoader(),
                 embedding_settings.embedding_model,
                 MetadataHeuristicV1.version,
             )
+            if agentic_service is not None:
+                agent_evaluation_service = AgentEvaluationService(
+                    service,
+                    persistence,
+                    agentic_service,
+                    DatasetLoader(),
+                    embedding_settings.embedding_model,
+                    rag_settings.rag_model_identifier,
+                    MetadataHeuristicV1.version,
+                    runner=WorkflowRunner(workflow_store),
+                )
     app.include_router(
         create_parse_router(
-            CodeIntelligenceService(service, JavaParserAdapter(), persistence=persistence)
+            CodeIntelligenceService(
+                service, JavaParserAdapter(), persistence=persistence
+            )
         )
     )
     app.include_router(create_embedding_router(embedding_service, index_status_service))
@@ -221,38 +334,66 @@ def create_app() -> FastAPI:
     app.include_router(create_hybrid_router(hybrid_service))
     app.include_router(create_rerank_router(rerank_service))
     app.include_router(create_rag_router(rag_service))
-    app.include_router(create_agentic_router(agentic_service))
-    app.include_router(create_chat_router(ChatService(agentic_service) if agentic_service else None))
-    app.include_router(create_evaluation_router(evaluation_service))
+    runner = WorkflowRunner(workflow_store)
+    app.include_router(create_agentic_router(agentic_service, runner))
+    app.include_router(
+        create_chat_router(
+            ChatService(agentic_service, runner) if agentic_service else None
+        )
+    )
+    app.include_router(
+        create_evaluation_router(evaluation_service, agent_evaluation_service)
+    )
     app.include_router(create_dependency_router(dependency_service))
-    app.include_router(create_index_job_router(index_job_store, service))
+    app.include_router(
+        create_index_job_router(index_job_store, service, workflow_store)
+    )
+    app.include_router(create_workflow_router(workflow_store, index_job_store))
 
     def openapi_schema():
         if app.openapi_schema is None:
-            schema = get_openapi(title=app.title, version=app.version,
-                                 description=app.description, routes=app.routes)
+            schema = get_openapi(
+                title=app.title,
+                version=app.version,
+                description=app.description,
+                routes=app.routes,
+            )
             for path in schema["paths"].values():
                 for operation in path.values():
                     if "responses" in operation and "422" in operation["responses"]:
                         operation["responses"]["422"] = {
                             "description": "Request validation failed.",
-                            "content": {"application/json": {"schema": {
-                                "$ref": "#/components/schemas/ErrorResponse"
-                            }}},
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "$ref": "#/components/schemas/ErrorResponse"
+                                    }
+                                }
+                            },
                         }
+
             def complete_error_examples(value):
                 if isinstance(value, dict):
                     error = value.get("error")
-                    if isinstance(error, dict) and "code" in error and "message" in error:
-                        error.setdefault("request_id", "00000000-0000-4000-8000-000000000000")
+                    if (
+                        isinstance(error, dict)
+                        and "code" in error
+                        and "message" in error
+                    ):
+                        error.setdefault(
+                            "request_id", "00000000-0000-4000-8000-000000000000"
+                        )
                         error.setdefault("details", None)
                     for child in value.values():
                         complete_error_examples(child)
                 elif isinstance(value, list):
                     for child in value:
                         complete_error_examples(child)
+
             complete_error_examples(schema["paths"])
-            schema["components"]["schemas"]["StreamEvent"] = StreamEvent.model_json_schema()
+            schema["components"]["schemas"]["StreamEvent"] = (
+                StreamEvent.model_json_schema()
+            )
             app.openapi_schema = schema
         return app.openapi_schema
 

@@ -24,6 +24,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ready": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Check backend dependencies and database migration readiness */
+        get: operations["get_ready_api_v1_ready_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions/validate": {
         parameters: {
             query?: never;
@@ -113,6 +130,23 @@ export interface paths {
         get: operations["get_repository_api_v1_repositories__repository_id__get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/repositories/upload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload a ZIP repository */
+        post: operations["upload_repository_api_v1_repositories_upload_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -493,6 +527,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/evaluations/rag-agents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Measure agent routing, grounding, and reliability on a pinned sample */
+        post: operations["evaluate_rag_agents_api_v1_evaluations_rag_agents_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/repositories/{repository_id}/dependencies/scan": {
         parameters: {
             query?: never;
@@ -544,6 +595,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/repositories/{repository_id}/index/jobs/{job_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel a queued or running indexing job */
+        post: operations["cancel_job_api_v1_repositories__repository_id__index_jobs__job_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/repositories/{repository_id}/index/jobs/latest": {
         parameters: {
             query?: never;
@@ -578,10 +646,160 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workflows/{workflow_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a repository-scoped workflow run */
+        get: operations["get_workflow_api_v1_workflows__workflow_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workflows/{workflow_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Request cancellation of a running or pending workflow */
+        post: operations["cancel_workflow_api_v1_workflows__workflow_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AgentEvaluationMetrics */
+        AgentEvaluationMetrics: {
+            /** Intent Accuracy */
+            intent_accuracy: number;
+            /** Routing Accuracy */
+            routing_accuracy: number;
+            /** Workflow Completion Rate */
+            workflow_completion_rate: number;
+            /** Workflow Failure Rate */
+            workflow_failure_rate: number;
+            /** Average End To End Latency Ms */
+            average_end_to_end_latency_ms: number;
+            /** Citation Validity Rate */
+            citation_validity_rate?: number | null;
+            /** Claim Support Rate */
+            claim_support_rate?: number | null;
+            /** Unsupported Claim Rate */
+            unsupported_claim_rate?: number | null;
+            /** Correct Abstention Rate */
+            correct_abstention_rate?: number | null;
+        };
+        /** AgentEvaluationRequest */
+        AgentEvaluationRequest: {
+            /**
+             * Repository Id
+             * Format: uuid
+             */
+            repository_id: string;
+            /**
+             * Dataset
+             * @example java-spring-agent-v1
+             */
+            dataset: string;
+            /**
+             * Top K
+             * @default 5
+             */
+            top_k: number;
+        };
+        /** AgentEvaluationResponse */
+        AgentEvaluationResponse: {
+            /**
+             * Repository Id
+             * Format: uuid
+             */
+            repository_id: string;
+            /** Dataset */
+            dataset: string;
+            /** Dataset Version */
+            dataset_version: string;
+            /** Repository Snapshot Id */
+            repository_snapshot_id: string;
+            /**
+             * Evaluated At
+             * Format: date-time
+             */
+            evaluated_at: string;
+            /** Query Count */
+            query_count: number;
+            /** Embedding Model Identifier */
+            embedding_model_identifier: string;
+            /** Generation Model Identifier */
+            generation_model_identifier: string;
+            /** Retrieval Configuration */
+            retrieval_configuration: {
+                [key: string]: number;
+            };
+            /** Reranker Version */
+            reranker_version: string;
+            /** Classifier Version */
+            classifier_version: string;
+            /** Prompt Versions */
+            prompt_versions: {
+                [key: string]: {
+                    [key: string]: string;
+                };
+            };
+            metrics: components["schemas"]["AgentEvaluationMetrics"];
+            /** Questions */
+            questions: components["schemas"]["AgentQuestionResult"][];
+        };
+        /** AgentQuestionResult */
+        AgentQuestionResult: {
+            /** Question Id */
+            question_id: string;
+            /**
+             * Category
+             * @enum {string}
+             */
+            category: "code_lookup" | "method_explanation" | "dependency_analysis" | "architecture_analysis" | "change_impact" | "insufficient_evidence";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "COMPLETED" | "FAILED";
+            /** Error Code */
+            error_code?: string | null;
+            /** Classified Intent */
+            classified_intent?: ("CODE_LOOKUP" | "CODE_EXPLANATION" | "DEPENDENCY_ANALYSIS" | "ARCHITECTURE_ANALYSIS" | "UNKNOWN") | null;
+            /** Selected Workflow */
+            selected_workflow?: ("code_analysis" | "dependency_analysis" | "architecture_analysis" | "clarification") | null;
+            /** Answer Status */
+            answer_status?: string | null;
+            /** Verification Status */
+            verification_status?: string | null;
+            /** Citation Count */
+            citation_count: number;
+            /** Valid Citation Count */
+            valid_citation_count: number;
+            /** Supported Claim Count */
+            supported_claim_count: number;
+            /** Unsupported Claim Count */
+            unsupported_claim_count: number;
+            /** Latency Ms */
+            latency_ms: number;
+        };
         /**
          * AnalyzeRequest
          * @description Use the same repository, question, and bounded top-k validation as RAG.
@@ -638,6 +856,8 @@ export interface components {
              */
             workflow_type: "repository_analysis_v1";
             workflow_metadata: components["schemas"]["WorkflowMetadata"];
+            /** Workflow Id */
+            workflow_id?: string | null;
         };
         /** ApprovedAliasesResponse */
         ApprovedAliasesResponse: {
@@ -690,6 +910,8 @@ export interface components {
             prompt_versions: components["schemas"]["PromptVersions"];
             /** Model Identifier */
             model_identifier: string;
+            /** Workflow Id */
+            workflow_id?: string | null;
         };
         /** ChatCitation */
         ChatCitation: {
@@ -764,6 +986,8 @@ export interface components {
             prompt_versions: components["schemas"]["ChatPromptVersions"];
             /** Model Identifier */
             model_identifier: string | null;
+            /** Workflow Id */
+            workflow_id?: string | null;
         };
         /** ChunkIndexResponse */
         ChunkIndexResponse: {
@@ -1067,7 +1291,7 @@ export interface components {
              * Status
              * @enum {string}
              */
-            status: "QUEUED" | "RUNNING" | "COMPLETED" | "FAILED";
+            status: "QUEUED" | "RUNNING" | "COMPLETED" | "FAILED" | "CANCELLED";
             /** Current Stage */
             current_stage: ("DISCOVERING" | "PARSING" | "CHUNKING" | "PERSISTING" | "EMBEDDING" | "VECTOR_INDEXING" | "DEPENDENCY_EXTRACTION" | "COMPLETED") | null;
             /** Completed Stages */
@@ -1367,6 +1591,19 @@ export interface components {
             valid: boolean;
             /** Normalized Question */
             normalized_question: string;
+        };
+        /** ReadinessResponse */
+        ReadinessResponse: {
+            /**
+             * Status
+             * @constant
+             */
+            status: "ready";
+            /**
+             * Service
+             * @constant
+             */
+            service: "archmind";
         };
         /** RepositoryFile */
         RepositoryFile: {
@@ -1679,6 +1916,53 @@ export interface components {
             /** Correction Attempts */
             correction_attempts: number;
         };
+        /** WorkflowRunResponse */
+        WorkflowRunResponse: {
+            /**
+             * Workflow Id
+             * Format: uuid
+             */
+            workflow_id: string;
+            /**
+             * Request Id
+             * Format: uuid
+             */
+            request_id: string;
+            /**
+             * Repository Id
+             * Format: uuid
+             */
+            repository_id: string;
+            /**
+             * Workflow Type
+             * @enum {string}
+             */
+            workflow_type: "chat" | "ask" | "agents.analyze" | "index";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "PENDING" | "RUNNING" | "COMPLETED" | "FAILED" | "CANCELLED";
+            /** Started At */
+            started_at?: string | null;
+            /** Updated At */
+            updated_at?: string | null;
+            /** Completed At */
+            completed_at?: string | null;
+            /** Error Code */
+            error_code?: string | null;
+            /** Attempt Count */
+            attempt_count: number;
+            /**
+             * Cancel Requested
+             * @default false
+             */
+            cancel_requested: boolean;
+            /** State */
+            state?: {
+                [key: string]: unknown;
+            };
+        };
         /** StreamEvent */
         StreamEvent: {
             /**
@@ -1728,6 +2012,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HealthResponse"];
+                };
+            };
+        };
+    };
+    get_ready_api_v1_ready_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadinessResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -2006,6 +2319,46 @@ export interface operations {
             };
             /** @description Service Unavailable */
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    upload_repository_api_v1_repositories_upload_post: {
+        parameters: {
+            query: {
+                name: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RepositoryRegistrationResponse"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3660,6 +4013,75 @@ export interface operations {
             };
         };
     };
+    evaluate_rag_agents_api_v1_evaluations_rag_agents_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgentEvaluationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentEvaluationResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     scan_api_v1_repositories__repository_id__dependencies_scan_post: {
         parameters: {
             query?: never;
@@ -3830,6 +4252,65 @@ export interface operations {
             };
         };
     };
+    cancel_job_api_v1_repositories__repository_id__index_jobs__job_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                repository_id: string;
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IndexJobResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     get_latest_job_api_v1_repositories__repository_id__index_jobs_latest_get: {
         parameters: {
             query?: never;
@@ -3902,6 +4383,117 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_workflow_api_v1_workflows__workflow_id__get: {
+        parameters: {
+            query: {
+                repository_id: string;
+            };
+            header?: never;
+            path: {
+                workflow_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowRunResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request validation failed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    cancel_workflow_api_v1_workflows__workflow_id__cancel_post: {
+        parameters: {
+            query: {
+                repository_id: string;
+            };
+            header?: never;
+            path: {
+                workflow_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowRunResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -2,6 +2,7 @@
 
 from sqlalchemy.exc import SQLAlchemyError
 
+from app.core.observability import get_tracer
 from app.errors import ApplicationError
 from app.modules.rag.config import RagSettings
 from app.modules.rag.context_builder import EvidenceContext, build_evidence_context
@@ -86,14 +87,25 @@ class RagService:
         except PromptError as exc:
             raise ApplicationError(503, "PROMPT_CONFIGURATION_ERROR", "Answer prompts are unavailable.") from exc
         try:
-            generated = self._provider.generate(system_prompt, user_prompt)
+            with get_tracer().span("rag.answer", metadata={
+                "prompt_name": versions.name,
+                "system_prompt_version": versions.system,
+                "user_prompt_template_version": versions.user,
+                "generation_model": self._provider.model_identifier,
+                "repository_id": str(request.repository_id),
+            }):
+                generated = self._provider.generate(system_prompt, user_prompt)
         except RagProviderError as exc:
             status = 429 if isinstance(exc, RagProviderRateLimited) else 504 if isinstance(exc, RagProviderTimeout) else 502
             raise ApplicationError(status, exc.code, "Answer generation failed.") from exc
         if generated.confidence == "INSUFFICIENT":
-            if generated.citations:
-                raise ApplicationError(502, "UNSUPPORTED_CITATION", "Generated answer has unsupported citations.")
-            response = self._insufficient(request, versions, context, *generated.limitations)
+            discarded = (
+                ["Model citations were discarded because evidence was insufficient."]
+                if generated.citations else []
+            )
+            response = self._insufficient(
+                request, versions, context, *generated.limitations, *discarded,
+            )
             return (response, context) if include_context else response
         if not defer_citation_validation:
             self._validate_citations(generated.citations, context)

@@ -1,13 +1,17 @@
 """Repository analysis API."""
 
-from fastapi import APIRouter
+from uuid import UUID, uuid4
 
+from fastapi import APIRouter, Request
+
+from app.core.observability import request_trace
 from app.errors import ApplicationError, ErrorResponse
 from app.modules.agentic.schemas import AnalyzeRequest, AnalyzeResponse
 from app.modules.agentic.workflow import AgenticWorkflow
+from app.modules.workflow_reliability.runner import WorkflowRunner
 
 
-def create_router(service: AgenticWorkflow | None) -> APIRouter:
+def create_router(service: AgenticWorkflow | None, runner: WorkflowRunner | None = None) -> APIRouter:
     router = APIRouter(prefix="/api/v1/agents", tags=["agentic"])
 
     @router.post(
@@ -23,9 +27,23 @@ def create_router(service: AgenticWorkflow | None) -> APIRouter:
             504: {"model": ErrorResponse, "description": "Provider timeout."},
         },
     )
-    def analyze(request: AnalyzeRequest) -> AnalyzeResponse:
+    def analyze(body: AnalyzeRequest, request: Request) -> AnalyzeResponse:
         if service is None:
             raise ApplicationError(503, "AGENTIC_NOT_CONFIGURED", "Repository analysis is not configured.")
-        return service.analyze(request)
+        correlation = getattr(request.state, "request_id", None)
+        request_id = UUID(correlation) if correlation else uuid4()
+        with request_trace(
+            "agents.analyze", workflow_type="agents.analyze",
+            repository_id=body.repository_id, request_id=request_id, question=body.question,
+        ):
+            if runner is None:
+                return service.analyze(body, request_id=request_id)
+            result, _ = runner.run(
+                repository_id=body.repository_id, request_id=request_id,
+                workflow_type="agents.analyze", question=body.question,
+                workflow_id=request_id,
+                operation=lambda _workflow_id: service.analyze(body, request_id=request_id),
+            )
+            return result
 
     return router

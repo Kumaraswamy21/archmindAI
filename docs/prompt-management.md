@@ -26,7 +26,7 @@ Promote a new version only after reviewing the file, adding the registry release
 
 ## Execution metadata and observability
 
-Every LLM answer records prompt name, selected system version, selected user version, and model identifier in its response metadata. When Langfuse observability is introduced, attach the same fields to Langfuse traces or generations. Phase 5.4 adds no Langfuse dependency or unused tracing infrastructure.
+Every LLM answer records prompt name, selected system version, selected user version, and model identifier in its response metadata. When Langfuse is enabled, the same fields are attached to traces and generations. See [Langfuse observability](observability/langfuse.md). Tracing stays optional and never receives prompt bodies, source text, or secrets.
 
 ## Source data and local notes
 

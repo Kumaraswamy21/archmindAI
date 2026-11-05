@@ -11,7 +11,7 @@ Stage = Literal[
     "DISCOVERING", "PARSING", "CHUNKING", "PERSISTING", "EMBEDDING",
     "VECTOR_INDEXING", "DEPENDENCY_EXTRACTION", "COMPLETED",
 ]
-JobStatus = Literal["QUEUED", "RUNNING", "COMPLETED", "FAILED"]
+JobStatus = Literal["QUEUED", "RUNNING", "COMPLETED", "FAILED", "CANCELLED"]
 
 
 class IndexJobResponse(BaseModel):

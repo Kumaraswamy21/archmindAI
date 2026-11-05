@@ -4,7 +4,7 @@ import json
 import asyncio
 from dataclasses import replace
 from threading import Event
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient

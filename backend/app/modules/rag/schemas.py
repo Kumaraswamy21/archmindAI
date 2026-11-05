@@ -56,3 +56,4 @@ class AskResponse(BaseModel):
     excluded_evidence_ids: list[str]
     prompt_versions: PromptVersions
     model_identifier: str
+    workflow_id: UUID | None = None

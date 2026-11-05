@@ -49,5 +49,5 @@ def test_embedding_metadata_migration_is_next_revision() -> None:
 
     config = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
     revisions = ScriptDirectory.from_config(config)
-    assert revisions.get_current_head() == "20261031_0006"
+    assert revisions.get_current_head() == "20261103_0007"
     assert revisions.get_revision("20261030_0002").down_revision == "20261030_0001"

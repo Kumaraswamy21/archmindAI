@@ -6,7 +6,7 @@ from pathlib import Path
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import delete, select, text
+from sqlalchemy import delete, text
 from sqlalchemy.exc import IntegrityError
 
 from app.db.config import DatabaseSettings

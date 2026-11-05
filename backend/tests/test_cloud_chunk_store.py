@@ -130,7 +130,7 @@ def test_schema_has_foreign_key_and_indexes() -> None:
 def test_initial_migration_is_present() -> None:
     config = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
     script = ScriptDirectory.from_config(config)
-    assert script.get_current_head() == "20261031_0006"
+    assert script.get_current_head() == "20261103_0007"
     assert script.get_revision("20261030_0001").down_revision is None
 
 

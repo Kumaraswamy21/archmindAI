@@ -12,7 +12,7 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Start the FastAPI backend on `http://127.0.0.1:8000` and configure its approved repository aliases. Open `http://127.0.0.1:3000`. `ARCHMIND_API_URL` changes the server-side proxy target when the backend runs elsewhere. The browser calls only same-origin `/api/v1` routes. Keep `DATABASE_URL` and `GEMINI_API_KEY` in the backend environment; never use a `NEXT_PUBLIC_` prefix for them.
+Start the FastAPI backend on `http://127.0.0.1:8000` and open `http://127.0.0.1:3000`. You can upload a repository ZIP from Add a project without configuring an alias. Approved aliases remain available for repositories already on the backend. `ARCHMIND_API_URL` changes the server-side proxy target when the backend runs elsewhere. The browser calls only same-origin `/api/v1` routes. Keep `DATABASE_URL` and `GEMINI_API_KEY` in the backend environment; never use a `NEXT_PUBLIC_` prefix for them.
 
 ## Routes
 

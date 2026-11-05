@@ -10,3 +10,8 @@ class HealthResponse(BaseModel):
 
     status: Literal["healthy"]
     service: Literal["archmind"]
+
+
+class ReadinessResponse(BaseModel):
+    status: Literal["ready"]
+    service: Literal["archmind"]

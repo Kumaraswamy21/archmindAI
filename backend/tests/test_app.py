@@ -6,6 +6,11 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.main import create_app
+from sqlalchemy.exc import OperationalError
+from alembic.config import Config
+from alembic.script import ScriptDirectory
+from pathlib import Path
 
 
 client = TestClient(app)
@@ -36,12 +41,106 @@ def test_health_check_returns_expected_response() -> None:
     assert response.json() == {"status": "healthy", "service": "archmind"}
 
 
+def test_readiness_requires_database_and_reports_outage() -> None:
+    service = create_app()
+    with TestClient(service) as client:
+        missing = client.get("/api/v1/ready")
+    assert missing.status_code == 503
+    assert missing.json()["error"]["code"] == "DATABASE_NOT_CONFIGURED"
+
+    class BrokenEngine:
+        def connect(self):
+            raise OperationalError("connection failed", None, None)
+
+        def dispose(self):
+            pass
+
+    service.state.db_engine = BrokenEngine()
+    service.state.provider_configured = True
+    with TestClient(service) as client:
+        outage = client.get("/api/v1/ready")
+    assert outage.status_code == 503
+    assert outage.json()["error"]["code"] == "DATABASE_UNAVAILABLE"
+
+
+def test_readiness_success_and_pool_shutdown() -> None:
+    expected = ScriptDirectory.from_config(
+        Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
+    ).get_current_head()
+
+    class Connection:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            return None
+
+        def begin(self):
+            return self
+
+        def execute(self, *_):
+            return None
+
+        def scalar(self, statement):
+            return expected if "alembic_version" in str(statement) else True
+
+    class Engine:
+        disposed = False
+
+        def connect(self):
+            return Connection()
+
+        def dispose(self):
+            self.disposed = True
+
+    service = create_app()
+    engine = Engine()
+    service.state.db_engine = engine
+    service.state.provider_configured = True
+    with TestClient(service) as client:
+        response = client.get("/api/v1/ready")
+    assert response.status_code == 200
+    assert response.json() == {"status": "ready", "service": "archmind"}
+    assert engine.disposed
+
+
+def test_json_body_limit_and_request_id(monkeypatch) -> None:
+    monkeypatch.setenv("ARCHMIND_JSON_BODY_LIMIT_BYTES", "1024")
+    with TestClient(create_app()) as client:
+        response = client.post(
+            "/api/v1/questions/validate", json={"question": "x" * 2000}
+        )
+    assert response.status_code == 413
+    assert response.json()["error"]["code"] == "REQUEST_TOO_LARGE"
+    assert response.headers["x-request-id"] == response.json()["error"]["request_id"]
+    with TestClient(create_app()) as client:
+        streamed = client.post(
+            "/api/v1/questions/validate", content=(b"x" * 700 for _ in range(2))
+        )
+    assert streamed.status_code == 413
+
+
+def test_production_mode_stops_without_authentication(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("ARCHMIND_ENV", "production")
+    monkeypatch.setenv(
+        "DATABASE_URL", "postgresql+psycopg://user:secret@db.example.com/archmind"
+    )
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    monkeypatch.setenv("ARCHMIND_FRONTEND_ORIGINS", '["https://app.example.com"]')
+    monkeypatch.setenv("ARCHMIND_UPLOAD_ROOT", str(tmp_path))
+    with pytest.raises(RuntimeError, match="authentication and authorization"):
+        create_app()
+
+
 def test_health_check_openapi_schema() -> None:
     schema = client.get("/openapi.json").json()
 
     operation = schema["paths"]["/api/v1/health"]["get"]
     assert operation["summary"] == "Check service health"
-    assert operation["description"] == "Return the current health status of the ArchMind API."
+    assert (
+        operation["description"]
+        == "Return the current health status of the ArchMind API."
+    )
     assert operation["responses"]["200"]["description"] == "The service is healthy."
     assert operation["responses"]["200"]["content"]["application/json"]["schema"] == {
         "$ref": "#/components/schemas/HealthResponse"
@@ -68,9 +167,7 @@ def test_valid_question_returns_normalized_response() -> None:
 
 
 def test_question_at_maximum_length_is_valid() -> None:
-    response = client.post(
-        "/api/v1/questions/validate", json={"question": "x" * 2000}
-    )
+    response = client.post("/api/v1/questions/validate", json={"question": "x" * 2000})
 
     assert response.status_code == 200
     assert response.json()["normalized_question"] == "x" * 2000
@@ -169,10 +266,20 @@ def test_all_routes_and_example_responses_are_documented() -> None:
 
     components = schema["components"]["schemas"]
     assert set(components["QuestionExampleResponse"]["required"]) == {
-        "example_id", "question"
+        "example_id",
+        "question",
     }
     assert components["ErrorResponse"]["properties"]["error"] == {
         "$ref": "#/components/schemas/ErrorDetail"
     }
-    assert set(components["ErrorDetail"]["required"]) == {"code", "message", "request_id"}
-    assert set(components["ErrorDetail"]["properties"]) == {"code", "message", "request_id", "details"}
+    assert set(components["ErrorDetail"]["required"]) == {
+        "code",
+        "message",
+        "request_id",
+    }
+    assert set(components["ErrorDetail"]["properties"]) == {
+        "code",
+        "message",
+        "request_id",
+        "details",
+    }

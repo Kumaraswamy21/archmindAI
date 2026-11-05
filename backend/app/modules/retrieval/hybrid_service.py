@@ -1,7 +1,10 @@
 """Fuse existing search services without issuing internal HTTP requests."""
 
+import os
+
 from sqlalchemy.exc import SQLAlchemyError
 
+from app.core.observability import get_tracer
 from app.errors import ApplicationError
 from app.modules.retrieval.fusion import fuse_rrf
 from app.modules.retrieval.hybrid_config import HybridSearchSettings
@@ -28,6 +31,14 @@ class HybridSearchService:
 
     def search(self, request: HybridSearchRequest) -> HybridSearchResponse:
         pool = max(request.top_k, self._settings.hybrid_candidate_pool)
+        with get_tracer().span("retrieval", as_type="retriever", metadata={
+            "retrieval_strategy": "hybrid_rrf",
+            "repository_id": str(request.repository_id),
+            "embedding_model": os.environ.get("EMBEDDING_MODEL", "gemini-embedding-2"),
+        }) as span:
+            return self._search(request, pool, span)
+
+    def _search(self, request: HybridSearchRequest, pool: int, span) -> HybridSearchResponse:
         semantic = self._semantic_service.search(SemanticSearchRequest(
             repository_id=request.repository_id, query=request.query, top_k=pool,
         ))
@@ -51,7 +62,7 @@ class HybridSearchService:
             raise ApplicationError(
                 503, "RETRIEVAL_SCOPE_MISMATCH", "Search results changed during retrieval."
             )
-        return HybridSearchResponse(
+        response = HybridSearchResponse(
             repository_id=request.repository_id,
             query=request.query,
             results=fuse_rrf(
@@ -60,3 +71,5 @@ class HybridSearchService:
                 top_k=request.top_k,
             ),
         )
+        span.set(metadata={"result_count": len(response.results)})
+        return response

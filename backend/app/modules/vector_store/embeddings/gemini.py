@@ -4,6 +4,7 @@ import math
 
 import httpx
 
+from app.core.observability import get_tracer
 from app.modules.vector_store.embeddings.base import (
     EmbeddingDimensionError,
     EmbeddingProviderError,
@@ -58,14 +59,18 @@ class GeminiEmbeddingProvider:
             raise ValueError("Query text must not be empty.")
         from google.genai import types
 
-        content = types.Content(
-            parts=[types.Part.from_text(text=f"task: code retrieval | query: {text}")]
-        )
-        response = self._request([content])
-        embeddings = getattr(response, "embeddings", None) or []
-        if len(embeddings) != 1:
-            raise EmbeddingDimensionError("Embedding response count did not match input count.")
-        return self._validate_vector(getattr(embeddings[0], "values", None))
+        with get_tracer().span(
+            "gemini.embedding", as_type="embedding", model=self.model_identifier,
+            metadata={"embedding_model": self.model_identifier},
+        ):
+            content = types.Content(
+                parts=[types.Part.from_text(text=f"task: code retrieval | query: {text}")]
+            )
+            response = self._request([content])
+            embeddings = getattr(response, "embeddings", None) or []
+            if len(embeddings) != 1:
+                raise EmbeddingDimensionError("Embedding response count did not match input count.")
+            return self._validate_vector(getattr(embeddings[0], "values", None))
 
     def _request(self, contents: list[object]) -> object:
         from google.genai import errors, types

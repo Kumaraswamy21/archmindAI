@@ -12,6 +12,7 @@ test("live approved project journey through indexing, grounded chat, citations, 
   await page.goto("/");
   await expect(page.getByRole("heading", { name: /Understand the system/ })).toBeVisible();
   await page.getByRole("link", { name: "Add a project" }).click();
+  await page.getByLabel("Source type").selectOption("approved");
   await page.getByLabel("Display name").fill(`ArchMind browser ${process.env.ARCHMIND_E2E_ALIAS}`);
   await page.getByLabel("Approved source").selectOption(process.env.ARCHMIND_E2E_ALIAS!);
   await page.getByRole("button", { name: "Create project" }).click();
@@ -39,6 +40,7 @@ test("live approved project journey through indexing, grounded chat, citations, 
 test("invalid registration and backend unavailable states", async ({ page }) => {
   await page.route("**/api/v1/repositories/approved-aliases", route => route.fulfill({ json: { aliases: ["sample-a"] } }));
   await page.goto("/projects/new");
+  await page.getByLabel("Source type").selectOption("approved");
   await page.getByRole("button", { name: "Create project" }).click();
   await expect(page.getByText("Enter a project name.")).toBeVisible();
   await expect(page.getByText("Choose an approved source.")).toBeVisible();

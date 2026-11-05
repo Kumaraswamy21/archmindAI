@@ -54,3 +54,4 @@ class AnalyzeResponse(BaseModel):
     prompt_versions: PromptVersions | None
     workflow_type: Literal["repository_analysis_v1"] = "repository_analysis_v1"
     workflow_metadata: WorkflowMetadata
+    workflow_id: UUID | None = None

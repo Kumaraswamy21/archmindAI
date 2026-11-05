@@ -1,7 +1,8 @@
 """Grounded repository question-answering endpoint."""
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 
+from app.core.observability import request_trace
 from app.errors import ApplicationError, ErrorResponse
 from app.modules.rag.schemas import AskRequest, AskResponse
 from app.modules.rag.service import RagService
@@ -24,9 +25,19 @@ def create_router(service: RagService | None) -> APIRouter:
             504: {"model": ErrorResponse, "description": "Provider timeout."},
         },
     )
-    def ask(request: AskRequest) -> AskResponse:
+    def ask(body: AskRequest, request: Request) -> AskResponse:
         if service is None:
             raise ApplicationError(503, "RAG_NOT_CONFIGURED", "Grounded answering is not configured.")
-        return service.answer(request)
+        correlation = getattr(request.state, "request_id", None)
+        with request_trace(
+            "ask", workflow_type="ask", repository_id=body.repository_id,
+            request_id=correlation, question=body.question,
+        ) as span:
+            response = service.answer(body)
+            span.set(output={
+                "confidence": response.confidence,
+                "citation_count": len(response.citations),
+            })
+            return response
 
     return router

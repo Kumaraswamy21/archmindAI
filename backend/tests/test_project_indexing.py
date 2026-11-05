@@ -61,6 +61,25 @@ class FakeJobs:
     def heartbeat(self, job):
         pass
 
+    def is_cancel_requested(self, job):
+        return bool(getattr(self.rows.get(job.job_id), "error_code", None) == "INDEX_JOB_CANCELLED")
+
+    def request_cancel(self, repository_id, job_id):
+        row = self.get(repository_id, job_id)
+        if row is None:
+            raise ApplicationError(404, "INDEX_JOB_NOT_FOUND", "Index job not found.")
+        if row.status in ("COMPLETED", "FAILED", "CANCELLED"):
+            raise ApplicationError(409, "WORKFLOW_NOT_CANCELLABLE", "Indexing is no longer running.")
+        status = "CANCELLED" if row.status == "QUEUED" else row.status
+        updated = row.model_copy(update={
+            "status": status, "error_code": "INDEX_JOB_CANCELLED",
+            "error_message": "Indexing cancelled at user request.",
+        })
+        self.rows[job_id] = updated
+        if job_id in self.queue:
+            self.queue.remove(job_id)
+        return updated
+
     def advance(self, job, completed, next_stage, snapshot_id=None):
         row = self.rows[job.job_id]
         assert row.current_stage == completed

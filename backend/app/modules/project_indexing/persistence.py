@@ -21,11 +21,17 @@ from app.modules.vector_store.input_builder import EMBEDDING_INPUT_VERSION
 LEASE_SECONDS = 180
 
 
+RESUMABLE_STAGES = frozenset({"EMBEDDING", "VECTOR_INDEXING", "DEPENDENCY_EXTRACTION"})
+
+
 @dataclass(frozen=True)
 class ClaimedJob:
     job_id: UUID
     repository_id: UUID
     lease_token: UUID
+    current_stage: str = "DISCOVERING"
+    completed_stages: tuple[str, ...] = ()
+    source_snapshot_id: str | None = None
 
 
 def _response(row: IndexJobRow) -> IndexJobResponse:
@@ -84,20 +90,44 @@ class IndexJobStore:
             if row is None:
                 return None
             token = uuid4()
-            session.execute(delete(IndexStagedEdgeRow).where(IndexStagedEdgeRow.job_id == row.job_id))
-            session.execute(delete(IndexStagedChunkRow).where(IndexStagedChunkRow.job_id == row.job_id))
+            staged = session.scalar(select(func.count()).select_from(IndexStagedChunkRow).where(
+                IndexStagedChunkRow.job_id == row.job_id,
+            )) or 0
+            resumable = (
+                row.status == "RUNNING"
+                and row.current_stage in RESUMABLE_STAGES
+                and bool(row.source_snapshot_id)
+                and int(staged) > 0
+            )
+            if not resumable:
+                session.execute(delete(IndexStagedEdgeRow).where(IndexStagedEdgeRow.job_id == row.job_id))
+                session.execute(delete(IndexStagedChunkRow).where(IndexStagedChunkRow.job_id == row.job_id))
+                row.current_stage = "DISCOVERING"
+                row.completed_stages = []
+                row.source_snapshot_id = None
+                row.embedding_model = None
+                row.embedding_dimension = None
             row.status = "RUNNING"
-            row.current_stage = "DISCOVERING"
-            row.completed_stages = []
-            row.started_at = now
+            row.started_at = row.started_at or now
             row.completed_at = None
+            if row.cancel_requested_at is not None:
+                row.status = "CANCELLED"
+                row.error_code = "INDEX_JOB_CANCELLED"
+                row.error_message = "Indexing cancelled at user request."
+                row.completed_at = now
+                row.lease_until = row.lease_token = None
+                session.execute(delete(IndexStagedEdgeRow).where(IndexStagedEdgeRow.job_id == row.job_id))
+                session.execute(delete(IndexStagedChunkRow).where(IndexStagedChunkRow.job_id == row.job_id))
+                return None
             row.error_code = row.error_message = None
-            row.source_snapshot_id = None
-            row.embedding_model = None
-            row.embedding_dimension = None
             row.lease_token = token
             row.lease_until = now + timedelta(seconds=LEASE_SECONDS)
-            return ClaimedJob(row.job_id, row.repository_id, token)
+            return ClaimedJob(
+                row.job_id, row.repository_id, token,
+                current_stage=row.current_stage or "DISCOVERING",
+                completed_stages=tuple(row.completed_stages or []),
+                source_snapshot_id=row.source_snapshot_id,
+            )
 
     def heartbeat(self, job: ClaimedJob) -> None:
         with self._sessions.begin() as session:
@@ -216,8 +246,8 @@ class IndexJobStore:
 
     def fail(self, job: ClaimedJob, code: str, message: str) -> None:
         with self._sessions.begin() as session:
-            row = self._owned(session, job)
-            row.status = "FAILED"
+            row = self._owned(session, job, allow_cancel=True)
+            row.status = "CANCELLED" if code == "INDEX_JOB_CANCELLED" else "FAILED"
             row.error_code = code[:64]
             row.error_message = message[:240]
             row.completed_at = datetime.now(timezone.utc)
@@ -225,9 +255,32 @@ class IndexJobStore:
             session.execute(delete(IndexStagedEdgeRow).where(IndexStagedEdgeRow.job_id == job.job_id))
             session.execute(delete(IndexStagedChunkRow).where(IndexStagedChunkRow.job_id == job.job_id))
 
+    def request_cancel(self, repository_id: UUID, job_id: UUID) -> IndexJobResponse:
+        now = datetime.now(timezone.utc)
+        with self._sessions.begin() as session:
+            row = session.get(IndexJobRow, job_id, with_for_update=True)
+            if row is None or row.repository_id != repository_id:
+                raise ApplicationError(404, "INDEX_JOB_NOT_FOUND", "Index job not found.")
+            if row.status in {"COMPLETED", "FAILED", "CANCELLED"}:
+                raise ApplicationError(409, "WORKFLOW_NOT_CANCELLABLE", "Indexing is no longer running.")
+            row.cancel_requested_at = now
+            if row.status == "QUEUED":
+                row.status = "CANCELLED"
+                row.error_code = "INDEX_JOB_CANCELLED"
+                row.error_message = "Indexing cancelled at user request."
+                row.completed_at = now
+            return _response(row)
+
+    def is_cancel_requested(self, job: ClaimedJob) -> bool:
+        with self._sessions() as session:
+            row = session.get(IndexJobRow, job.job_id)
+            return bool(row is not None and row.cancel_requested_at is not None)
+
     @staticmethod
-    def _owned(session: Session, job: ClaimedJob) -> IndexJobRow:
+    def _owned(session: Session, job: ClaimedJob, *, allow_cancel: bool = False) -> IndexJobRow:
         row = session.get(IndexJobRow, job.job_id, with_for_update=True)
         if row is None or row.lease_token != job.lease_token or row.status != "RUNNING":
             raise RuntimeError("Index job lease was lost.")
+        if row.cancel_requested_at is not None and not allow_cancel:
+            raise ApplicationError(409, "INDEX_JOB_CANCELLED", "Indexing cancelled at user request.")
         return row

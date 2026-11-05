@@ -6,6 +6,7 @@ from threading import Event
 from typing import Callable
 from uuid import UUID, uuid4
 
+from app.core.observability import get_tracer
 from app.errors import ApplicationError
 from app.modules.agentic.architecture_analysis import ArchitectureAnalysisAgent
 from app.modules.agentic.classifier import IntentClassifier
@@ -103,17 +104,26 @@ class AgenticWorkflow:
 
     def _code_analysis(self, state: WorkflowState) -> dict[str, object]:
         self._notify_start(state, "code_analysis")
-        result = self._code.answer(state["repository_id"], state["question"], state["top_k"])
+        with get_tracer().span("agent.code_analysis", as_type="agent", metadata={
+            "agent_name": "code_analysis", "repository_id": str(state["repository_id"]),
+        }):
+            result = self._code.answer(state["repository_id"], state["question"], state["top_k"])
         return self._agent_update(state, result, "code_analysis", ["code_analysis"])
 
     def _dependency_analysis(self, state: WorkflowState) -> dict[str, object]:
         self._notify_start(state, "dependency_analysis")
-        result = self._dependency.answer(state["repository_id"], state["question"])
+        with get_tracer().span("agent.dependency_analysis", as_type="agent", metadata={
+            "agent_name": "dependency_analysis", "repository_id": str(state["repository_id"]),
+        }):
+            result = self._dependency.answer(state["repository_id"], state["question"])
         return self._agent_update(state, result, "dependency_analysis", ["dependency_analysis"])
 
     def _architecture_analysis(self, state: WorkflowState) -> dict[str, object]:
         self._notify_start(state, "architecture_analysis")
-        result = self._architecture.answer(state["repository_id"], state["question"], state["top_k"])
+        with get_tracer().span("agent.architecture_analysis", as_type="agent", metadata={
+            "agent_name": "architecture_analysis", "repository_id": str(state["repository_id"]),
+        }):
+            result = self._architecture.answer(state["repository_id"], state["question"], state["top_k"])
         return self._agent_update(
             state, result, "architecture_analysis",
             ["code_analysis", "dependency_analysis", "architecture_analysis"],
@@ -276,8 +286,8 @@ class AgenticWorkflow:
         metadata["correction_attempts"] = state["correction_attempts"]
         return {"answer": answer, "citations": citations, "workflow_metadata": metadata}
 
-    def analyze(self, request: AnalyzeRequest) -> AnalyzeResponse:
-        response, _ = self.analyze_with_evidence(request)
+    def analyze(self, request: AnalyzeRequest, *, request_id: UUID | None = None) -> AnalyzeResponse:
+        response, _ = self.analyze_with_evidence(request, request_id=request_id)
         return response
 
     def analyze_with_evidence(

@@ -14,7 +14,7 @@ from app.errors import ApplicationError, handle_application_error, handle_valida
 from app.main import create_app
 from app.modules.chat.router import create_router
 from app.modules.chat.service import ChatService
-from test_agentic import graph_stub, result, workflow_for
+from test_agentic import graph_stub, result, workflow_for  # noqa: F401
 
 
 def _client(workflow):

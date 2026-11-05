@@ -188,7 +188,7 @@ def test_openapi_and_http_success(monkeypatch):
 def test_search_migration_and_generated_column():
     config = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
     script = ScriptDirectory.from_config(config)
-    assert script.get_current_head() == "20261031_0006"
+    assert script.get_current_head() == "20261103_0007"
     assert script.get_revision("20261030_0004").down_revision == "20261030_0003"
     column = CodeChunkRow.__table__.c.search_vector
     assert column.computed is not None

@@ -1,7 +1,8 @@
 """Repository registration rules."""
 
 from pathlib import Path
-from uuid import UUID
+from uuid import UUID, uuid4
+import shutil
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.errors import ApplicationError
@@ -22,6 +23,7 @@ from app.modules.repository_ingestion.security import (
     RepositoryConfiguration,
     resolve_approved_repository,
 )
+from app.modules.repository_ingestion.uploads import extract_sources, temporary_upload_directory
 
 
 class RepositoryService:
@@ -56,17 +58,43 @@ class RepositoryService:
             raise ApplicationError(503, "DATABASE_UNAVAILABLE", "Project registration is unavailable.") from exc
         return self._record(project, root_path)
 
+    def register_upload(self, name: str, archive: Path) -> RepositoryRecord:
+        name = RepositoryRegistrationRequest(name=name, source_alias="upload").name
+        root = self._configuration.upload_root
+        staging = temporary_upload_directory(root)
+        alias = f"upload-{uuid4().hex}"
+        destination = root / alias
+        try:
+            extract_sources(archive, staging,
+                            max_files=self._configuration.max_files,
+                            max_file_size_bytes=self._configuration.max_file_size_bytes)
+            staging.rename(destination)
+            if self._store is None:
+                return self._registry.register(name, alias, destination)
+            try:
+                project = self._store.create(name, alias)
+            except SQLAlchemyError as exc:
+                raise ApplicationError(503, "DATABASE_UNAVAILABLE", "Project registration is unavailable.") from exc
+            return self._record(project, destination)
+        except Exception:
+            if destination.exists():
+                shutil.rmtree(destination)
+            raise
+        finally:
+            if staging.exists():
+                shutil.rmtree(staging)
+
     def registered_record(self, repository_id: UUID) -> RepositoryRecord | None:
         if self._store is None:
             return self._registry.get(repository_id)
         project = self.project(repository_id)
         if project is None:
             return None
-        path = self._configuration.aliases.get(project.source_alias)
+        path = self._source_path(project.source_alias)
         if path is None:
             return None
         try:
-            root = resolve_approved_repository(path, self._configuration.approved_roots)
+            root = resolve_approved_repository(path, self._approved_roots())
         except ApplicationError:
             return None
         return self._record(project, root)
@@ -92,6 +120,18 @@ class RepositoryService:
     def approved_aliases(self) -> list[str]:
         return sorted(alias for alias, path in self._configuration.aliases.items()
                       if self._is_available(path))
+
+    def _source_path(self, alias: str) -> Path | None:
+        if alias.startswith("upload-") and len(alias) == 39:
+            try:
+                UUID(hex=alias[7:])
+            except ValueError:
+                return None
+            return self._configuration.upload_root / alias
+        return self._configuration.aliases.get(alias)
+
+    def _approved_roots(self) -> tuple[Path, ...]:
+        return (*self._configuration.approved_roots, self._configuration.upload_root)
 
     def _is_available(self, path: Path) -> bool:
         try:
@@ -186,7 +226,7 @@ class RepositoryService:
             raise unavailable
         try:
             root = resolve_approved_repository(
-                record.root_path, self._configuration.approved_roots
+                record.root_path, self._approved_roots()
             )
         except ApplicationError as exc:
             raise unavailable from exc

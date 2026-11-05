@@ -1,8 +1,10 @@
 """Repository registration API."""
 
 from uuid import UUID
+import shutil
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Request
+from starlette.concurrency import run_in_threadpool
 
 from app.errors import ApplicationError, ErrorResponse
 from app.modules.repository_ingestion.schemas import (
@@ -15,15 +17,17 @@ from app.modules.repository_ingestion.schemas import (
     RepositoryScanResponse,
 )
 from app.modules.repository_ingestion.service import RepositoryService
+from app.modules.repository_ingestion.uploads import MAX_ARCHIVE_BYTES, temporary_upload_directory
 
 
 def create_router(service: RepositoryService) -> APIRouter:
     router = APIRouter(prefix="/api/v1/repositories", tags=["repositories"])
 
     def project_response(record) -> RepositoryRegistrationResponse:
+        status = record.status if record.status == "REGISTERED" else "REGISTERED"
         return RepositoryRegistrationResponse(
             repository_id=record.repository_id, name=record.name,
-            source_alias=record.source_alias, status=record.status,
+            source_alias=record.source_alias, status=status,
             registered_at=record.registered_at,
         )
 
@@ -106,6 +110,29 @@ def create_router(service: RepositoryService) -> APIRouter:
     ) -> RepositoryRegistrationResponse:
         record = service.register(request)
         return project_response(record)
+
+    @router.post("/upload", status_code=201, response_model=RepositoryRegistrationResponse,
+                 responses={413: {"model": ErrorResponse}, 422: {"model": ErrorResponse}},
+                 summary="Upload a ZIP repository")
+    async def upload_repository(request: Request, name: str = Query(min_length=1, max_length=100)) -> RepositoryRegistrationResponse:
+        if request.headers.get("content-type", "").split(";", 1)[0] not in {"application/zip", "application/octet-stream"}:
+            raise ApplicationError(415, "UNSUPPORTED_UPLOAD", "Choose a ZIP file to upload.")
+        if request.headers.get("content-length", "").isdigit() and int(request.headers["content-length"]) > MAX_ARCHIVE_BYTES:
+            raise ApplicationError(413, "UPLOAD_LIMIT_EXCEEDED", "ZIP must be 500 MB or smaller.")
+        directory = temporary_upload_directory(service._configuration.upload_root)
+        archive = directory / "source.zip"
+        try:
+            size = 0
+            with archive.open("xb") as output:
+                async for chunk in request.stream():
+                    size += len(chunk)
+                    if size > MAX_ARCHIVE_BYTES:
+                        raise ApplicationError(413, "UPLOAD_LIMIT_EXCEEDED", "ZIP must be 500 MB or smaller.")
+                    await run_in_threadpool(output.write, chunk)
+            record = await run_in_threadpool(service.register_upload, name, archive)
+            return project_response(record)
+        finally:
+            shutil.rmtree(directory)
 
     @router.get(
         "/{repository_id}/files",

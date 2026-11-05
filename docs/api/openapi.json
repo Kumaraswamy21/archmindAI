@@ -28,6 +28,37 @@
         }
       }
     },
+    "/api/v1/ready": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Check backend dependencies and database migration readiness",
+        "operationId": "get_ready_api_v1_ready_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadinessResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/questions/validate": {
       "post": {
         "tags": [
@@ -361,6 +392,60 @@
               }
             },
             "description": "Service Unavailable"
+          },
+          "422": {
+            "description": "Request validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/repositories/upload": {
+      "post": {
+        "tags": [
+          "repositories"
+        ],
+        "summary": "Upload a ZIP repository",
+        "operationId": "upload_repository_api_v1_repositories_upload_post",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100,
+              "title": "Name"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepositoryRegistrationResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request Entity Too Large"
           },
           "422": {
             "description": "Request validation failed.",
@@ -2474,6 +2559,87 @@
         }
       }
     },
+    "/api/v1/evaluations/rag-agents": {
+      "post": {
+        "tags": [
+          "evaluation"
+        ],
+        "summary": "Measure agent routing, grounding, and reliability on a pinned sample",
+        "operationId": "evaluate_rag_agents_api_v1_evaluations_rag_agents_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentEvaluationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentEvaluationResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Request Entity Too Large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/repositories/{repository_id}/dependencies/scan": {
       "post": {
         "tags": [
@@ -2751,6 +2917,89 @@
         }
       }
     },
+    "/api/v1/repositories/{repository_id}/index/jobs/{job_id}/cancel": {
+      "post": {
+        "tags": [
+          "project-indexing"
+        ],
+        "summary": "Cancel a queued or running indexing job",
+        "operationId": "cancel_job_api_v1_repositories__repository_id__index_jobs__job_id__cancel_post",
+        "parameters": [
+          {
+            "name": "repository_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Repository Id"
+            }
+          },
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IndexJobResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          },
+          "422": {
+            "description": "Request validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/repositories/{repository_id}/index/jobs/latest": {
       "get": {
         "tags": [
@@ -2886,10 +3135,515 @@
           }
         }
       }
+    },
+    "/api/v1/workflows/{workflow_id}": {
+      "get": {
+        "tags": [
+          "workflows"
+        ],
+        "summary": "Get a repository-scoped workflow run",
+        "operationId": "get_workflow_api_v1_workflows__workflow_id__get",
+        "parameters": [
+          {
+            "name": "workflow_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Workflow Id"
+            }
+          },
+          {
+            "name": "repository_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Repository Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowRunResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          },
+          "422": {
+            "description": "Request validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/{workflow_id}/cancel": {
+      "post": {
+        "tags": [
+          "workflows"
+        ],
+        "summary": "Request cancellation of a running or pending workflow",
+        "operationId": "cancel_workflow_api_v1_workflows__workflow_id__cancel_post",
+        "parameters": [
+          {
+            "name": "workflow_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Workflow Id"
+            }
+          },
+          {
+            "name": "repository_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Repository Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowRunResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          },
+          "422": {
+            "description": "Request validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "AgentEvaluationMetrics": {
+        "properties": {
+          "intent_accuracy": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Intent Accuracy"
+          },
+          "routing_accuracy": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Routing Accuracy"
+          },
+          "workflow_completion_rate": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Workflow Completion Rate"
+          },
+          "workflow_failure_rate": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Workflow Failure Rate"
+          },
+          "average_end_to_end_latency_ms": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Average End To End Latency Ms"
+          },
+          "citation_validity_rate": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Citation Validity Rate"
+          },
+          "claim_support_rate": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Claim Support Rate"
+          },
+          "unsupported_claim_rate": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unsupported Claim Rate"
+          },
+          "correct_abstention_rate": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Correct Abstention Rate"
+          }
+        },
+        "type": "object",
+        "required": [
+          "intent_accuracy",
+          "routing_accuracy",
+          "workflow_completion_rate",
+          "workflow_failure_rate",
+          "average_end_to_end_latency_ms"
+        ],
+        "title": "AgentEvaluationMetrics"
+      },
+      "AgentEvaluationRequest": {
+        "properties": {
+          "repository_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Repository Id"
+          },
+          "dataset": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{0,99}$",
+            "title": "Dataset",
+            "examples": [
+              "java-spring-agent-v1"
+            ]
+          },
+          "top_k": {
+            "type": "integer",
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Top K",
+            "default": 5
+          }
+        },
+        "type": "object",
+        "required": [
+          "repository_id",
+          "dataset"
+        ],
+        "title": "AgentEvaluationRequest"
+      },
+      "AgentEvaluationResponse": {
+        "properties": {
+          "repository_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Repository Id"
+          },
+          "dataset": {
+            "type": "string",
+            "title": "Dataset"
+          },
+          "dataset_version": {
+            "type": "string",
+            "title": "Dataset Version"
+          },
+          "repository_snapshot_id": {
+            "type": "string",
+            "title": "Repository Snapshot Id"
+          },
+          "evaluated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Evaluated At"
+          },
+          "query_count": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Query Count"
+          },
+          "embedding_model_identifier": {
+            "type": "string",
+            "title": "Embedding Model Identifier"
+          },
+          "generation_model_identifier": {
+            "type": "string",
+            "title": "Generation Model Identifier"
+          },
+          "retrieval_configuration": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Retrieval Configuration"
+          },
+          "reranker_version": {
+            "type": "string",
+            "title": "Reranker Version"
+          },
+          "classifier_version": {
+            "type": "string",
+            "title": "Classifier Version"
+          },
+          "prompt_versions": {
+            "additionalProperties": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "type": "object",
+            "title": "Prompt Versions"
+          },
+          "metrics": {
+            "$ref": "#/components/schemas/AgentEvaluationMetrics"
+          },
+          "questions": {
+            "items": {
+              "$ref": "#/components/schemas/AgentQuestionResult"
+            },
+            "type": "array",
+            "title": "Questions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "repository_id",
+          "dataset",
+          "dataset_version",
+          "repository_snapshot_id",
+          "evaluated_at",
+          "query_count",
+          "embedding_model_identifier",
+          "generation_model_identifier",
+          "retrieval_configuration",
+          "reranker_version",
+          "classifier_version",
+          "prompt_versions",
+          "metrics",
+          "questions"
+        ],
+        "title": "AgentEvaluationResponse"
+      },
+      "AgentQuestionResult": {
+        "properties": {
+          "question_id": {
+            "type": "string",
+            "title": "Question Id"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "code_lookup",
+              "method_explanation",
+              "dependency_analysis",
+              "architecture_analysis",
+              "change_impact",
+              "insufficient_evidence"
+            ],
+            "title": "Category"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "COMPLETED",
+              "FAILED"
+            ],
+            "title": "Status"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "classified_intent": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "CODE_LOOKUP",
+                  "CODE_EXPLANATION",
+                  "DEPENDENCY_ANALYSIS",
+                  "ARCHITECTURE_ANALYSIS",
+                  "UNKNOWN"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Classified Intent"
+          },
+          "selected_workflow": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "code_analysis",
+                  "dependency_analysis",
+                  "architecture_analysis",
+                  "clarification"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selected Workflow"
+          },
+          "answer_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answer Status"
+          },
+          "verification_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verification Status"
+          },
+          "citation_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Citation Count"
+          },
+          "valid_citation_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Valid Citation Count"
+          },
+          "supported_claim_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Supported Claim Count"
+          },
+          "unsupported_claim_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Unsupported Claim Count"
+          },
+          "latency_ms": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Latency Ms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "question_id",
+          "category",
+          "status",
+          "citation_count",
+          "valid_citation_count",
+          "supported_claim_count",
+          "unsupported_claim_count",
+          "latency_ms"
+        ],
+        "title": "AgentQuestionResult"
+      },
       "AnalyzeRequest": {
         "properties": {
           "repository_id": {
@@ -2999,6 +3753,18 @@
           },
           "workflow_metadata": {
             "$ref": "#/components/schemas/WorkflowMetadata"
+          },
+          "workflow_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workflow Id"
           }
         },
         "type": "object",
@@ -3119,6 +3885,18 @@
           "model_identifier": {
             "type": "string",
             "title": "Model Identifier"
+          },
+          "workflow_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workflow Id"
           }
         },
         "type": "object",
@@ -3328,6 +4106,18 @@
               }
             ],
             "title": "Model Identifier"
+          },
+          "workflow_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workflow Id"
           }
         },
         "type": "object",
@@ -4012,7 +4802,8 @@
               "QUEUED",
               "RUNNING",
               "COMPLETED",
-              "FAILED"
+              "FAILED",
+              "CANCELLED"
             ],
             "title": "Status"
           },
@@ -4859,6 +5650,26 @@
           }
         ]
       },
+      "ReadinessResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "ready",
+            "title": "Status"
+          },
+          "service": {
+            "type": "string",
+            "const": "archmind",
+            "title": "Service"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "service"
+        ],
+        "title": "ReadinessResponse"
+      },
       "RepositoryFile": {
         "properties": {
           "path": {
@@ -5651,6 +6462,118 @@
           "correction_attempts"
         ],
         "title": "WorkflowMetadata"
+      },
+      "WorkflowRunResponse": {
+        "properties": {
+          "workflow_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Workflow Id"
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Request Id"
+          },
+          "repository_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Repository Id"
+          },
+          "workflow_type": {
+            "type": "string",
+            "enum": [
+              "chat",
+              "ask",
+              "agents.analyze",
+              "index"
+            ],
+            "title": "Workflow Type"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "RUNNING",
+              "COMPLETED",
+              "FAILED",
+              "CANCELLED"
+            ],
+            "title": "Status"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "attempt_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Attempt Count"
+          },
+          "cancel_requested": {
+            "type": "boolean",
+            "title": "Cancel Requested",
+            "default": false
+          },
+          "state": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "State"
+          }
+        },
+        "type": "object",
+        "required": [
+          "workflow_id",
+          "request_id",
+          "repository_id",
+          "workflow_type",
+          "status",
+          "attempt_count"
+        ],
+        "title": "WorkflowRunResponse"
       },
       "StreamEvent": {
         "properties": {

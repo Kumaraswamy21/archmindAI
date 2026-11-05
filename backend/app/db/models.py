@@ -3,7 +3,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import CheckConstraint, Computed, DateTime, ForeignKey, Index, Integer, String, Text, func, text
+from sqlalchemy import Boolean, CheckConstraint, Computed, DateTime, ForeignKey, Index, Integer, String, Text, func, text
 from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR, UUID as PGUUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from pgvector.sqlalchemy import VECTOR
@@ -170,6 +170,7 @@ class IndexJobRow(Base):
     embedding_dimension: Mapped[int | None] = mapped_column(Integer)
     error_code: Mapped[str | None] = mapped_column(String(64))
     error_message: Mapped[str | None] = mapped_column(String(240))
+    cancel_requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     __table_args__ = (
@@ -193,3 +194,35 @@ class IndexStagedEdgeRow(Base):
     job_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), ForeignKey("index_jobs.job_id", ondelete="CASCADE"), primary_key=True)
     relationship_id: Mapped[str] = mapped_column(String(64), primary_key=True)
     payload: Mapped[dict] = mapped_column(JSONB, nullable=False)
+
+
+class WorkflowRunRow(Base):
+    __tablename__ = "workflow_runs"
+
+    workflow_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True)
+    request_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    repository_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("repositories.id", ondelete="CASCADE"), nullable=False,
+    )
+    workflow_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    error_code: Mapped[str | None] = mapped_column(String(64))
+    attempt_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    cancel_requested: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    state: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+
+    __table_args__ = (
+        Index("ix_workflow_runs_repository_updated", "repository_id", "updated_at"),
+        Index("ix_workflow_runs_request", "request_id"),
+        CheckConstraint(
+            "status IN ('PENDING','RUNNING','COMPLETED','FAILED','CANCELLED')",
+            name="ck_workflow_runs_status",
+        ),
+        CheckConstraint(
+            "workflow_type IN ('chat','ask','agents.analyze','index')",
+            name="ck_workflow_runs_type",
+        ),
+    )
